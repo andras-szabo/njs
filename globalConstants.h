@@ -22,5 +22,12 @@ const std::string               gkVersion { " alpha 0.1 " };
 const float                     gkIntroFadeInSecs { 1.5 };
 const float                     gkIntroProceedSecs { 5.0 };
 
+// Graphics constants
+const float                     gkCellPixSizeX { 100 };
+const float                     gkCellPixSizeY { 100 };
+const sf::Vector2f              gkClosedBkgTexCoords { 0, 0 };
+const sf::Vector2f              gkLightBkgTexCoords { 100, 0 };
+const sf::Vector2f              gkDarkBkgTexCoords { 200, 0 };
+const float                     gkScrollSpeed { 200 };
 
 #endif

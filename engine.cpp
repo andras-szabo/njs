@@ -144,6 +144,7 @@ void cEngine::run()
             i->render();
 
         mWindow.display();
+        
         (*mStateStack.rbegin())->run();
         
         executeStackChanges();
