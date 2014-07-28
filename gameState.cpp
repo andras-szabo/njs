@@ -58,7 +58,7 @@ void cGameState::setUpGraphics()
         }
     
     // Set up renderstate for board rendering
-    mBoardState.texture = &rEngine.mTextureHolder.get(TexID::assets);
+    mBoardState.texture = &rEngine.mTextureHolder.get("assets");
 }
 
 void cGameState::init()
@@ -66,12 +66,15 @@ void cGameState::init()
     // Load level, reCreate and fill up board:
     // mBoard.reCreate(x, y, top, bottom);
     // iterate through file:
-    //      - mBoard.set(relevant x, relevant y, type)
+    //      - set blocked fields
+    //      - add grey slime
+    //      - add guards
     //      - fill empty ones randomly
     
     // Set up the vertexArray of the board
     pBoardVA = new sf::Vertex[ mSizeX * mSizeY * 4 ];
     setUpGraphics();
+    
     
 }
 
@@ -85,8 +88,10 @@ void cGameState::render()
     //      - the vertexarray is created once and then not touched again; for the background,
     //        the only relevant qualities are: is this a darker green patch, or a lighter green
     //        one, or is this inaccessible.
-    //      - when scrolling, the vertexarray's y coords are modified, but that's it.
+    //      - when scrolling, mBoardState's transform is modified, that's it.
     //
+    //      - low priority: only draw the actually visible parts of the vertexarray
+    
     // rWindow.draw(&pBoardVA[0], mSizeX * mSizeY * 4, sf::Quads, mBoardState);
 
     

@@ -5,6 +5,8 @@
 #include "resourceHolder.h"
 #include "globalConstants.h"
 #include "state.h"
+#include "animation.h"
+#include "entityInfo.h"
 
 class cState;
 
@@ -20,7 +22,9 @@ public:
 public:
     sf::RenderWindow                                    mWindow;
     cResourceHolder<sf::Font, FontID>                   mFontHolder;
-    cResourceHolder<sf::Texture, TexID>                 mTextureHolder;
+    cResourceHolder<sf::Texture, std::string>           mTextureHolder;
+    cResourceHolder<cAnimation, std::string>            mAnimationHolder;
+    cResourceHolder<cEntityInfo, std::string>           mEntityHolder;
     sf::View                                            mView;
     
     // mStrParam is the postbox through which states can pass

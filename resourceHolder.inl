@@ -1,4 +1,26 @@
 #include "ResourcePath.hpp"
+#include <fstream>
+
+template <typename Resource, typename ID>
+void cResourceHolder<Resource, ID>::loadAllFromList(const std::string& filename, const std::string& extension)
+{
+    std::vector<std::string>    files;
+    std::string                 stmp;
+    std::ifstream               inFile(resourcePath() + filename + ".lst");
+    
+    while ( inFile >> stmp )
+    {
+        files.push_back(stmp);
+    }
+    
+    inFile.close();
+    
+    for ( const auto& i : files )
+    {
+        load(static_cast<ID>(i), i + extension);
+    }
+    
+}
 
 template <typename Resource, typename ID>
 void cResourceHolder<Resource, ID>::load(ID id, const std::string& filename)

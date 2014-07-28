@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "introState.h"
+#include <fstream>
 
 cEngine::cEngine()
 {
@@ -7,8 +8,14 @@ cEngine::cEngine()
     mWindow.setVerticalSyncEnabled(true);
     mWindow.setKeyRepeatEnabled(false);
     
-    // Load fonts, textures
-    mTextureHolder.load(TexID::introScreen, "sisu_splash.png");
+    // Load textures, as listed in "textures.lst", each with ".png" extension
+    mTextureHolder.loadAllFromList("textures", ".png");
+    
+    // Load animations, as listed in "animations.lst", each with ".ani" extension
+    mAnimationHolder.loadAllFromList("animations", ".ani");
+    
+    // Load entities, as listed in "entities.lst", each with ".ent" extension
+    mEntityHolder.loadAllFromList("entities", ".ent");
     
     mView.setSize(gkViewSize.x, gkViewSize.y);
     mView.setCenter(gkViewSize.x / 2, gkViewSize.y / 2);

@@ -3,6 +3,7 @@
 
 #include "engine.h"
 #include "board.h"
+#include "entity.h"
 #include <SFML/Graphics.hpp>
 
 class cGameState : public cState {
@@ -20,10 +21,11 @@ private:
     void                scrollBoard(float dt);  // dt in seconds
 
 private:
-    cBoard              mBoard;
+    
+    cBoard              mBoard { rEngine };
     sf::Clock           mClock;
     int                 mSizeX, mSizeY; // size of the board
-   
+    
     sf::Vertex*         pBoardVA;       // vertex array for the board
     sf::RenderStates    mBoardState;
     sf::Vector2f        mBoardPos { 0, 0 };

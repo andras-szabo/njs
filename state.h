@@ -31,7 +31,7 @@ protected:
     sf::RenderWindow&                       rWindow;            // Reference to renderwindow
     sf::View&                               rView;              // reference to renderview
     cResourceHolder<sf::Font, FontID>&      rFontHolder;        // ... to resource holders
-    cResourceHolder<sf::Texture, TexID>&    rTextureHolder;
+    cResourceHolder<sf::Texture, std::string>&    rTextureHolder;
     bool                                    mIsActive;
     
 public:

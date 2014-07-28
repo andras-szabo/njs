@@ -8,6 +8,10 @@
 template <typename Resource, typename ID>
 class cResourceHolder {
 public:
+    void                loadAllFromList(const std::string&, const std::string& extenstion);
+                                // load all res from .lst file; e.g:
+                                // mTextureHolder.loadAllFromList("textures", ".png");
+    
     void                load(ID, const std::string&);   // load resource from file
     Resource&           get(ID);
     const Resource&     get(ID) const;

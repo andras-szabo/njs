@@ -11,7 +11,7 @@ mProceedTimer { sf::seconds(gkIntroProceedSecs) }
 
 void cIntroState::init()
 {
-    mSprite.setTexture(rTextureHolder.get(TexID::introScreen));
+    mSprite.setTexture(rTextureHolder.get("introScreen"));
     mSprite.setColor(sf::Color(255, 255, 255, 0));
 }
 
