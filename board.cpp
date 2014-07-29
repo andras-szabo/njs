@@ -51,6 +51,75 @@ bool cBoard::clickable(int x, int y) const
     
 }
 
+// Makes sure that mCell[] represents the actual
+// state of things, i.e. the same info will be
+// found here as one would get when looking at
+// the unique_pointers of mPieces.
+void cBoard::keepTheBooks(int x, int y)
+{
+    if ( valid(x, y) )
+    {
+        short int tmp;
+        
+        auto t = mPieces[x][y]->mType;
+        switch ( t ) {
+            case EntType::jelly:    tmp = static_cast<short>(mPieces[x][y]->mColour); break;
+            case EntType::diamond:      tmp = 6;    break;
+            case EntType::block:        tmp = 7;    break;
+            case EntType::guard:        tmp = 8;    break;
+            case EntType::superJelly:
+            {
+                tmp = static_cast<short>(mPieces[x][y]->mColour);
+                tmp |= 32;      // set the "superjelly!" bit
+                break;
+            }
+            case EntType::stuckJelly:
+            {
+                tmp = static_cast<short>(mPieces[x][y]->mColour);
+                tmp |= 64;      // set the "stuck jelly!" bit
+                break;
+            }
+        }
+        
+        // Consider the "slime bit"
+        short slimeBit = mCell[x][y] ^ (255-128);
+        
+        tmp |= slimeBit;
+        
+        mCell[x][y] = tmp;
+    }
+}
+
+// Makes sure that given object becomes part of a
+// clickable triplet, by changing its 2
+// selected neighbours (1st and last) to its colour.
+void cBoard::makeTriplet(int x, int y)
+{
+    if ( !valid(x, y) ) return;
+    std::vector<cEntity*>   adj;    // as in, adjacent
+   
+    if ( clickable(x-1, y-1) )  adj.push_back(mPieces[x-1][y-1].get());
+    if ( clickable(x, y-1) )    adj.push_back(mPieces[x][y-1].get());
+    if ( clickable(x+1, y-1) )  adj.push_back(mPieces[x+1][y-1].get());
+    if ( clickable(x-1, y) )    adj.push_back(mPieces[x-1][y].get());
+    if ( clickable(x+1, y) )    adj.push_back(mPieces[x+1][y].get());
+    if ( clickable(x-1, y+1) )  adj.push_back(mPieces[x-1][y+1].get());
+    if ( clickable(x, y+1) )    adj.push_back(mPieces[x][y+1].get());
+    if ( clickable(x+1, y+1) )  adj.push_back(mPieces[x+1][y+1].get());
+    
+    (*adj.begin())->switchColour(mPieces[x][y]->mColour);
+    (*adj.rbegin())->switchColour(mPieces[x][y]->mColour);
+    
+    // Do the bookkeeping
+    for ( int i = -1; i < 2; ++i )
+        for ( int j = -1; j < 2; ++j )
+        {
+            keepTheBooks(x+i, y+j);
+        }
+    
+}
+
+
 short cBoard::neighbourCount(int x, int y) const
 {
     if (!valid(x, y)) return 0;
@@ -111,8 +180,8 @@ void cBoard::place(int x, int y, EntType t, EntColour c)
     switch ( t ) {
         case EntType::jelly: {
             std::unique_ptr<cJelly> ptr = spawn<cJelly> ( c );
-            mCell[x][y] |= static_cast<short>(c);
             mPieces[x][y] = std::move(ptr);
+            keepTheBooks(x, y);
             break;
         }
         /*case EntType::superJelly: {

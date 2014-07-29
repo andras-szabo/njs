@@ -25,6 +25,7 @@ public:
     void                place(int x, int y, EntType t, EntColour c = EntColour::random);
     bool                clickable(int x, int y) const;
     short               neighbourCount(int x, int y) const;
+    void                makeTriplet(int x, int y);
 
 private:
     template<class T>
@@ -33,17 +34,23 @@ private:
         std::unique_ptr<T> ptr { new T(rEngine, colour) };
         return std::move(ptr);
     }
+    void                keepTheBooks(int, int);
     
 public:
     int                 mSizeX, mSizeY, mTop, mBottom;
 
 private:
-    // How to decode a cell?
-    // 0 - 3rd bits:    type ( empty / r / g / b / y / p / diamond / block / guard )
-    //      4rd bit:    slime?
-    //      5th bit:    super?
-    //     negative:    inaccessible
-    // so: 0: empty, 1: red, 2: green, 3: blue, 4: yellow, 5: purple, 6: 
+    // mCell stores everything about the piece in one, i.e. its type and colour.
+    // -1: not accessible, 0: empty.
+    // If not 0:
+    // 1 - 5: colour: red, green, blue, yellow, purple.
+    // 6: diamond, 7: block, 8: guard
+    // So this covers the first 1 bits.
+    // The rest are sign bits:
+    // bit16: superjelly?
+    // bit32: stuckjelly?
+    // bit64: slime?
+    // To get at these: XOR with 255-16, 255-32, 255-64, jne.
 
     std::vector<std::vector<short>>                     mCell;
     std::vector<std::vector<std::unique_ptr<cEntity>>>  mPieces;

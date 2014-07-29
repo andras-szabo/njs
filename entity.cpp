@@ -2,9 +2,11 @@
 #include "globalConstants.h"
 
 cJelly::cJelly(cEngine& engine, EntColour c):
-cEntity { engine },
-mColour { c }
+cEntity { engine }
 {
+
+    mColour = c;
+    
     // OK so based on the colour and the type,
     // load the appropriate entityInfo
     

@@ -12,6 +12,14 @@ public:
     
     void        setPos(float x, float y) { mPos.x = x; mPos.y = y; }
     void        setGoal(float x, float y) { mGoal.x = x; mGoal.y = y; }
+
+public:
+    EntType                             mType;
+    EntColour                           mColour;
+    
+    // To produce a single identity number:
+    // type = mType | mColour
+    
     
 protected:
     const cEngine&                      rEngine;
@@ -27,9 +35,6 @@ class cJelly : public cEntity {
 public:
     cJelly(cEngine& engine, EntColour c);
     
-protected:
-    EntType             mType;
-    EntColour           mColour;
 };
 
 class cSuperJelly : public cJelly {

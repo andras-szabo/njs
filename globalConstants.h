@@ -5,11 +5,19 @@
 #include <SFML/Graphics.hpp>
 
 // Entity IDs (colour is an attribute of entities)
-enum class EntType  : short int { jelly = 1, superJelly = 2,
-                                  diamond = 6,
-                                  block = 7,
-                                  guard = 8 };
-enum class EntColour: short int { random = 0, red = 1, green = 2, blue = 3, yellow = 4, purple = 5 };
+enum class EntType  : short int { jelly = 1,
+                                  superJelly = 2,
+                                  stuckJelly = 3,
+                                  diamond = 4,
+                                  block = 5,
+                                  guard = 6 };
+
+enum class EntColour: short int {   random = 0,         // or n/a
+                                    red = 1,
+                                    green = 2,
+                                    blue = 3,
+                                    yellow = 4,
+                                    purple = 5 };
 
 // Font and texture IDs
 enum class FontID   :   unsigned int { defaultFont };
