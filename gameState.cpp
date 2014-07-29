@@ -29,6 +29,7 @@ void cGameState::fillLevel()
     makeSureItsPlayable();
 }
 
+// Depth first search
 void cGameState::dfs(int i, int j, int& depth, int maxdepth)
 {
     if ( visited[i][j] ) return;
@@ -37,15 +38,10 @@ void cGameState::dfs(int i, int j, int& depth, int maxdepth)
     visited[i][j] = true;
     if ( depth == maxdepth ) return;
 
-    if ( mBoard.clickable(i-1, j-1) )   { dfs(i-1, j-1, depth, maxdepth); }
-    if ( mBoard.clickable(i, j-1) )     { dfs(i, j-1, depth, maxdepth); }
-    if ( mBoard.clickable(i+1, j-1) )   { dfs(i+1, j-1, depth, maxdepth); }
-    if ( mBoard.clickable(i-1, j) )     { dfs(i-1, j, depth, maxdepth); }
-    if ( mBoard.clickable(i+1, j) )     { dfs(i+1, j, depth, maxdepth); }
-    if ( mBoard.clickable(i-1, j+1) )   { dfs(i-1, j+1, depth, maxdepth); }
-    if ( mBoard.clickable(i, j+1) )     { dfs(i, j+1, depth, maxdepth); }
-    if ( mBoard.clickable(i+1, j+1) )   { dfs(i+1, j+1, depth, maxdepth); }
-
+    for ( int x = -1; x < 2; ++x )
+        for ( int y = -1; y < 2; ++y )
+            if ( (x != 0 || y != 0) && mBoard.clickable(i+x, j+y) )
+                dfs(i+x, j+y, depth, maxdepth);
 }
 
 // Makes sure that there is at least one clickable triplet

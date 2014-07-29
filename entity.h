@@ -12,6 +12,8 @@ public:
     
     void        setPos(float x, float y) { mPos.x = x; mPos.y = y; }
     void        setGoal(float x, float y) { mGoal.x = x; mGoal.y = y; }
+    
+    virtual void    switchColour(EntColour) = 0;
 
 public:
     EntType                             mType;
@@ -34,7 +36,10 @@ protected:
 class cJelly : public cEntity {
 public:
     cJelly(cEngine& engine, EntColour c);
+    virtual void switchColour(EntColour) override;
     
+protected:
+    void    loadInfo();
 };
 
 class cSuperJelly : public cJelly {
