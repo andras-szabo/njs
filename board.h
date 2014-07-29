@@ -23,6 +23,8 @@ public:
     
     cEntity*            piece(int x, int y) const;
     void                place(int x, int y, EntType t, EntColour c = EntColour::random);
+    bool                clickable(int x, int y) const;
+    short               neighbourCount(int x, int y) const;
 
 private:
     template<class T>
@@ -41,6 +43,7 @@ private:
     //      4rd bit:    slime?
     //      5th bit:    super?
     //     negative:    inaccessible
+    // so: 0: empty, 1: red, 2: green, 3: blue, 4: yellow, 5: purple, 6: 
 
     std::vector<std::vector<short>>                     mCell;
     std::vector<std::vector<std::unique_ptr<cEntity>>>  mPieces;

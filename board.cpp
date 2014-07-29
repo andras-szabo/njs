@@ -42,6 +42,32 @@ short cBoard::at(int x, int y) const
     return valid(x,y) ? -1 : mCell[x][y];
 }
 
+bool cBoard::clickable(int x, int y) const
+{
+    if (!valid(x, y)) return false;
+    auto p = mCell[x][y] & 15;      // we're only interested in the lower
+                                    // 4 bits (0th - 3rd)
+    return p > 0 && p < 6;          // 0: empty, 6: diamond; in between jellies.
+    
+}
+
+short cBoard::neighbourCount(int x, int y) const
+{
+    if (!valid(x, y)) return 0;
+    
+    short count = 0;
+    if ( clickable(x-1, y-1) )  ++count;
+    if ( clickable(x, y-1) )    ++count;
+    if ( clickable(x+1, y-1) )  ++count;
+    if ( clickable(x-1, y) )    ++count;
+    if ( clickable(x+1, y) )    ++count;
+    if ( clickable(x-1, y+1) )  ++count;
+    if ( clickable(x, y+1) )    ++count;
+    if ( clickable(x+1, y+1) )  ++count;
+
+    return count;
+}
+
 void cBoard::set(int x, int y, unsigned short value)
 {
     if ( valid(x,y) )

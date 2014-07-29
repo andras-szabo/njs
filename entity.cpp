@@ -24,7 +24,7 @@ mColour { c }
         default: break;
     }
     
-    cEntityInfo&    info = rEngine.mEntityHolder.get(id);
+    const cEntityInfo& info = rEngine.mEntityHolder.get(id);
     
     // Load our own animations, so we don't have to go through the engine
     // every time we need a new anim phase

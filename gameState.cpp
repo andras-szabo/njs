@@ -1,10 +1,155 @@
 #include "gameState.h"
+#include <fstream>
 #include <cmath>
 
-cGameState::cGameState(cEngine& engine):
+cGameState::cGameState(cEngine& engine, const std::string& sLevel):
 cState { engine, "game" }
 {
+    loadLevel(sLevel);
+    fillLevel();
+}
 
+// Fills level up with random jellies. This is not to be confused
+// with "refill", where the board gets "refilled" in the sense
+// of jellies being poured on top of ones already on the board.
+//
+// This also checks if the starting layout is solvable, i.e. there's
+// at least one triplet to be touched.
+void cGameState::fillLevel()
+{
+    for ( int i = 0; i < mSizeX; ++i )
+        for ( int j = 0; j < mSizeY; ++j )
+        {
+            if ( mBoard.at(i,j) == 0 )                  // empty
+            {
+                mBoard.place(i, j, EntType::jelly);     // default: random colour
+            }
+        }
+    
+    makeSureItsPlayable();
+}
+
+void cGameState::dfs(int i, int j, int& depth, int maxdepth)
+{
+    if ( visited[i][j] ) return;
+    ++depth;
+    
+    visited[i][j] = true;
+    if ( depth == maxdepth ) return;
+
+    if ( mBoard.clickable(i-1, j-1) )   { dfs(i-1, j-1, depth, maxdepth); }
+    if ( mBoard.clickable(i, j-1) )     { dfs(i, j-1, depth, maxdepth); }
+    if ( mBoard.clickable(i+1, j-1) )   { dfs(i+1, j-1, depth, maxdepth); }
+    if ( mBoard.clickable(i-1, j) )     { dfs(i-1, j, depth, maxdepth); }
+    if ( mBoard.clickable(i+1, j) )     { dfs(i+1, j, depth, maxdepth); }
+    if ( mBoard.clickable(i-1, j+1) )   { dfs(i-1, j+1, depth, maxdepth); }
+    if ( mBoard.clickable(i, j+1) )     { dfs(i, j+1, depth, maxdepth); }
+    if ( mBoard.clickable(i+1, j+1) )   { dfs(i+1, j+1, depth, maxdepth); }
+
+}
+
+// Makes sure that there is at least one clickable triplet
+// in the area between mTop and mBottom on the board.
+void cGameState::makeSureItsPlayable()
+{
+    int depth { 0 };
+    for ( int i = 0; i < mSizeX; ++i )
+        for ( int j = 0; j < mSizeY; ++j )
+            visited[i][j] = false;
+    
+    for ( int i = 0; i < mSizeX; ++i )
+    {
+        for ( int j = mTop; j < mBottom; ++j )
+        {
+            dfs(i, j, depth, 3);
+            if ( depth >= 3 ) break;
+        }
+        if (depth >= 3 ) break;
+    }
+    
+    // If there's no triplet found:
+    // pick random node
+    // if it doesn't have at least 2 neighbours, pick a new one
+    // make the first 2 neighbours the same colour as itself
+    
+    if ( depth < 3 )
+    {
+        int tmpx, tmpy;
+        do
+        {
+            tmpx = rand() % mSizeX;
+            tmpy = rand() % (mBottom - mTop) + mTop;
+        }
+        while ( mBoard.neighbourCount(tmpx, tmpy) < 2 );
+        
+        mBoard.makeTriplet(tmpx, tmpy);
+    }
+}
+
+
+void cGameState::loadLevel(const std::string& sLevel)
+{
+    std::ifstream   inFile(resourcePath() + sLevel + ".lvl");
+    if ( !inFile.is_open() )
+    {
+        throw std::runtime_error("Couldn't load level.");
+    }
+   
+    inFile >> mLevelName;
+    inFile >> mSizeX >> mSizeY >> mTop >> mBottom;
+    inFile >> mStarScores[0] >> mStarScores[1] >> mStarScores[2];
+    
+    mBoard.reCreate(mSizeX, mSizeY, mTop, mBottom);
+    
+    std::string     stmp;
+    int             xtmp, ytmp;
+    inFile >> stmp;
+    while ( stmp != "END" )
+    {
+        inFile >> xtmp >> ytmp;
+        if ( stmp == "INACC" )
+        {
+            mBoard.set(xtmp, ytmp, -1);
+        }
+        else if ( stmp == "SLIME" )
+        {
+            mBoard.set(xtmp, ytmp, 16);     // 00010000  -> slime bit
+        }
+        else if ( stmp == "GUARD" )
+        {
+            mBoard.place(xtmp, ytmp, EntType::guard);
+        }
+        else if ( stmp == "BLOCK" )
+        {
+            mBoard.place(xtmp, ytmp, EntType::block);
+        }
+        else if ( stmp == "STUCK" )
+        {
+            short int ztmp, qtmp;
+            inFile >> ztmp >> qtmp;
+            
+            // spawn stuck jelly, of colour ztmp, and with qtmp number of lives
+        }
+        inFile >> stmp;
+    }
+    
+    inFile.close();
+    
+    // Level structure:
+    // name
+    // rows columns top bottom
+    // onestar_points twostar_points threestar_points
+    // INACC x y            <--- inaccessible terrain
+    // SLIME x y            <--- grey slime
+    // GUARD x y            <--- guard
+    // BLOCK x y            <--- block
+    // STUCK x y colour lives <---- stuck jelly
+    // END
+    
+    // Create "visited" structure:
+    for ( int i = 0; i < mSizeX; ++i )
+        visited.push_back(std::vector<bool>(mSizeY, false));
+    
 }
 
 void cGameState::scrollBoard(float dt)
@@ -63,14 +208,7 @@ void cGameState::setUpGraphics()
 
 void cGameState::init()
 {
-    // Load level, reCreate and fill up board:
-    // mBoard.reCreate(x, y, top, bottom);
-    // iterate through file:
-    //      - set blocked fields
-    //      - add grey slime
-    //      - add guards
-    //      - fill empty ones randomly
-    
+
     // Set up the vertexArray of the board
     pBoardVA = new sf::Vertex[ mSizeX * mSizeY * 4 ];
     setUpGraphics();

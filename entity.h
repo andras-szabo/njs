@@ -14,7 +14,7 @@ public:
     void        setGoal(float x, float y) { mGoal.x = x; mGoal.y = y; }
     
 protected:
-    cEngine&                            rEngine;
+    const cEngine&                      rEngine;
     sf::Vector2f                        mPos { 0, 0 };
     sf::Vector2f                        mGoal { 0, 0 };
     sf::Sprite                          mSprite;
