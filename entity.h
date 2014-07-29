@@ -10,14 +10,17 @@ class cEntity {
 public:
     cEntity(cEngine& engine): rEngine { engine } { }
     
-    void        setPos(float x, float y) { mPos.x = x; mPos.y = y; }
-    void        setGoal(float x, float y) { mGoal.x = x; mGoal.y = y; }
+    void            setPos(float x, float y) { mPos.x = x; mPos.y = y; }
+    void            setGoal(float x, float y);
     
     virtual void    switchColour(EntColour) = 0;
-
+    virtual void    render(sf::RenderWindow&) = 0;
+    virtual void    update(float dt) = 0;
+    
 public:
     EntType                             mType;
     EntColour                           mColour;
+    bool                                mNeedToMove { false };
     
     // To produce a single identity number:
     // type = mType | mColour
@@ -27,16 +30,22 @@ protected:
     const cEngine&                      rEngine;
     sf::Vector2f                        mPos { 0, 0 };
     sf::Vector2f                        mGoal { 0, 0 };
+    sf::Vector2f                        mVel { 0, 0 };      // velocity
     sf::Sprite                          mSprite;
     std::map<std::string, cAnimation>   mAnims;
     int                                 mAnimStepCounter;
+    int                                 mCurrentAnimSteps;
+    cAnimation*                         pCurrentAnim;
     float                               mSpeed;
+    float                               mTimeAccumulated { 0.f };
 };
 
 class cJelly : public cEntity {
 public:
     cJelly(cEngine& engine, EntColour c);
-    virtual void switchColour(EntColour) override;
+    virtual void        switchColour(EntColour) override;
+    virtual void        render(sf::RenderWindow&) override;
+    virtual void        update(float dt) override;
     
 protected:
     void    loadInfo();

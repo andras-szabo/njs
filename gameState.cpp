@@ -3,7 +3,8 @@
 #include <cmath>
 
 cGameState::cGameState(cEngine& engine, const std::string& sLevel):
-cState { engine, "game" }
+cState { engine, "game" },
+mState { GameState::waiting }
 {
     loadLevel(sLevel);
     fillLevel();
@@ -204,12 +205,9 @@ void cGameState::setUpGraphics()
 
 void cGameState::init()
 {
-
     // Set up the vertexArray of the board
     pBoardVA = new sf::Vertex[ mSizeX * mSizeY * 4 ];
     setUpGraphics();
-    
-    
 }
 
 void cGameState::render()
@@ -218,24 +216,48 @@ void cGameState::render()
     //      - this is simple: render some background texture ( perhaps not even needed ).
     
     // Render board
-    //      - the board is rendered as a vertexarray, using the texture for background tiles.
-    //      - the vertexarray is created once and then not touched again; for the background,
-    //        the only relevant qualities are: is this a darker green patch, or a lighter green
-    //        one, or is this inaccessible.
-    //      - when scrolling, mBoardState's transform is modified, that's it.
-    //
     //      - low priority: only draw the actually visible parts of the vertexarray
     
-    // rWindow.draw(&pBoardVA[0], mSizeX * mSizeY * 4, sf::Quads, mBoardState);
-
+    rWindow.draw(&pBoardVA[0], mSizeX * mSizeY * 4, sf::Quads, mBoardState);
     
-    // Render jellies
+    // Render hilights...?
+
+    // Render jellies; to make sure, start with one line above mTop.
+    for ( int i = 0; i < mSizeX; ++i )
+        for ( int j = mTop-1; j <= mBottom; ++j )
+        {
+            cEntity* p = mBoard.piece(i,j);
+            if ( p != nullptr ) p->render(rWindow);
+        }
+    
+    // Render other things: connections, explosions...
+
     // Render game info
 }
 
 // run() is called once every frame.
 void cGameState::run()
 {
+    // processEvents();
+    
+    switch ( mState ) {
+        case GameState::waiting:
+            //predictOutcome();           // prepares and highlights outcome of move
+            //prepareConnections();       // prepares the gfx for connecting jellies
+            break;
+        case GameState::executing:
+            //proceedWithExplosions();
+            // Then: check if we should start refill, or whatnot
+            break;
+        case GameState::refilling:
+            // Check move logic jne.
+            break;
+        case GameState::aftermath:
+            // check if we're finished and can get back to
+            // waiting, or there's a stageover
+            break;
+    }
+    
     /*
      
      get mouse input events, and handle them;

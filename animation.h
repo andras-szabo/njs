@@ -10,7 +10,7 @@ public:
     std::string         mName;
     sf::IntRect         mFirstPhaseRect;
     int                 mSteps;
-    float               mTimeInMs;
+    float               mStepTimeInMs;
 };
 
 #endif /* defined(__not_jelly_splash__animation__) */

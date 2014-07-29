@@ -18,6 +18,9 @@ enum class EntColour: short int {   random = 0,         // or n/a
                                     blue = 3,
                                     yellow = 4,
                                     purple = 5 };
+    
+// Game states
+enum class GameState :  unsigned int { waiting, executing, refilling, aftermath };
 
 // Font and texture IDs
 enum class FontID   :   unsigned int { defaultFont };

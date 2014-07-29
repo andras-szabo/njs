@@ -27,6 +27,7 @@ private:
 public:
     std::string         mLevelName;
     int                 mStarScores[3];
+    GameState           mState;
     
 private:
     

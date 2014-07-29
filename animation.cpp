@@ -10,7 +10,7 @@ bool cAnimation::loadFromFile(const std::string& file)
     inFile >> mFirstPhaseRect.left >> mFirstPhaseRect.top;
     inFile >> mFirstPhaseRect.width >> mFirstPhaseRect.height;
     inFile >> mSteps;
-    inFile >> mTimeInMs;
+    inFile >> mStepTimeInMs;
 
     inFile.close();
     return true;
