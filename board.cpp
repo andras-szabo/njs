@@ -29,6 +29,8 @@ void cBoard::init()
         
         mPieces.push_back(std::move(col));
     }
+    
+    std::cout << "Init done; sizex: " << mSizeX << "; sizey: " << mSizeY << "\n";
 }
 
 bool cBoard::marked(sf::Vector2i v) const
@@ -67,12 +69,17 @@ bool cBoard::valid(int x, int y) const
 
 short cBoard::at(int x, int y) const
 {
-    return valid(x,y) ? -1 : mCell[x][y];
+    return !valid(x,y) ? -1 : mCell[x][y];
+}
+
+bool cBoard::closed(int x, int y) const
+{
+    return at(x, y) == -1;
 }
 
 bool cBoard::clickable(int x, int y) const
 {
-    if (!valid(x, y)) return false;
+    if (!valid(x, y) || mCell[x][y]==0 ) return false;
     
     // Non-clickable things should have a colour of 0.
     return mPieces[x][y]->mColour != EntColour::random;
@@ -129,15 +136,11 @@ void cBoard::makeTriplet(int x, int y)
 {
     if ( !valid(x, y) ) return;
     std::vector<cEntity*>   adj;    // as in, adjacent
-   
-    if ( clickable(x-1, y-1) )  adj.push_back(mPieces[x-1][y-1].get());
-    if ( clickable(x, y-1) )    adj.push_back(mPieces[x][y-1].get());
-    if ( clickable(x+1, y-1) )  adj.push_back(mPieces[x+1][y-1].get());
-    if ( clickable(x-1, y) )    adj.push_back(mPieces[x-1][y].get());
-    if ( clickable(x+1, y) )    adj.push_back(mPieces[x+1][y].get());
-    if ( clickable(x-1, y+1) )  adj.push_back(mPieces[x-1][y+1].get());
-    if ( clickable(x, y+1) )    adj.push_back(mPieces[x][y+1].get());
-    if ( clickable(x+1, y+1) )  adj.push_back(mPieces[x+1][y+1].get());
+  
+    for ( int i = -1; i < 2; ++i )
+        for ( int j = -1; j < 2; ++j )
+            if ( ( i != 0 || j != 0 ) && clickable(x+i, y+j) )
+                adj.push_back(mPieces[x+i][y+j].get());
     
     (*adj.begin())->switchColour(mPieces[x][y]->mColour);
     (*adj.rbegin())->switchColour(mPieces[x][y]->mColour);
@@ -154,7 +157,7 @@ void cBoard::makeTriplet(int x, int y)
 // Non-clickable things should have a colour of 0.
 short cBoard::colourAt(sf::Vector2i v) const
 {
-    if ( !valid(v.x, v.y) ) return -1;
+    if ( !clickable(v.x, v.y) ) return -1;
     return static_cast<short>(mPieces[v.x][v.y]->mColour);
 }
 
@@ -205,7 +208,8 @@ void cBoard::reCreate(int x, int y, int top, int bottom)
 
 cEntity* cBoard::piece(int x, int y) const
 {
-    return valid(x, y) ? mPieces[x][y].get() : nullptr;
+    if ( !valid(x, y) || mCell[x][y] == 0 ) return nullptr;    
+    return mPieces[x][y].get();
 }
 
 void cBoard::remove(int x, int y)

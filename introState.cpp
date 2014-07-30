@@ -11,7 +11,7 @@ mProceedTimer { sf::seconds(gkIntroProceedSecs) }
 
 void cIntroState::init()
 {
-    mSprite.setTexture(rTextureHolder.get("introScreen"));
+    mSprite.setTexture(rTextureHolder.get("sisu_splash"));
     mSprite.setColor(sf::Color(255, 255, 255, 0));
 }
 
@@ -30,7 +30,8 @@ void cIntroState::run()
     {
         if ( event.type == sf::Event::KeyPressed )
         {
-            // swapRequest("mainMenu");
+            swapRequest("game");
+            rEngine.mStrParam = "01";
             clearRequest();                 // tmp: just quit
             return;
         }
@@ -41,7 +42,8 @@ void cIntroState::run()
     mTimePassed += mClock.restart();
     if ( mTimePassed >= mProceedTimer )
     {
-        // swapRequest("mainMenu");
+        swapRequest("game");
+        rEngine.mStrParam="01";
         clearRequest();                     // tmp: just quit
         return;
     }

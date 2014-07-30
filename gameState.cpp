@@ -2,11 +2,14 @@
 #include <fstream>
 #include <cmath>
 
-cGameState::cGameState(cEngine& engine, const std::string& sLevel):
+// Upon construction, the level to be loaded
+// is stored by rEngine.mStrParam
+cGameState::cGameState(cEngine& engine):
 cState { engine, "game" },
 mState { GameState::waiting }
 {
-    loadLevel(sLevel);
+    std::cout << "loading level\n";
+    loadLevel(rEngine.mStrParam);
     fillLevel();
 }
 
@@ -165,6 +168,7 @@ void cGameState::scrollBoard(float dt)
         mNeedToScroll = false;
     }
     
+    mBoardState.blendMode = sf::BlendMode::BlendMultiply;
     mBoardState.transform.translate(mBoardPos);
 }
 
@@ -177,10 +181,10 @@ void cGameState::setUpGraphics()
         for ( int j = 0; j < mSizeY; ++j )
         {
             size_t p = (i * 4) + (j * 4 * mSizeX);
-            pBoardVA[p].position    = sf::Vector2f { i * gkCellPixSizeX, j * gkCellPixSizeY };
-            pBoardVA[p+1].position  = sf::Vector2f { (i+1) * gkCellPixSizeX - 1 , j * gkCellPixSizeY };
-            pBoardVA[p+2].position  = sf::Vector2f { (i+1) * gkCellPixSizeX - 1, (j+1) * gkCellPixSizeY - 1 };
-            pBoardVA[p+3].position  = sf::Vector2f { i * gkCellPixSizeX, (j+1) * gkCellPixSizeY - 1 };
+            pBoardVA[p].position    = sf::Vector2f { gkScrLeft + i * gkCellPixSizeX, j * gkCellPixSizeY };
+            pBoardVA[p+1].position  = sf::Vector2f { gkScrLeft + (i+1) * gkCellPixSizeX, j * gkCellPixSizeY };
+            pBoardVA[p+2].position  = sf::Vector2f { gkScrLeft + (i+1) * gkCellPixSizeX, (j+1) * gkCellPixSizeY};
+            pBoardVA[p+3].position  = sf::Vector2f { gkScrLeft + i * gkCellPixSizeX, (j+1) * gkCellPixSizeY };
             
             sf::Vector2f texcoords;
             
@@ -205,6 +209,7 @@ void cGameState::setUpGraphics()
 
 void cGameState::init()
 {
+    std::cout << "init...";
     // Set up the vertexArray of the board
     pBoardVA = new sf::Vertex[ mSizeX * mSizeY * 4 ];
     setUpGraphics();
@@ -242,6 +247,13 @@ void cGameState::render()
 
 sf::Vector2i cGameState::screenToBoardTranslate(sf::Vector2i v)
 {
+    // First: translate between screen and view coords
+    
+    v.x *= ( gkViewSize.x / gkWindowSize.x );
+    v.y *= ( gkViewSize.y / gkWindowSize.y );
+    
+    // Then translate between screen and board coords
+    
     sf::Vector2i ret;
     ret.x = (v.x - gkScrLeft) / gkCellPixSizeX;
     ret.y = (v.y - gkScrTop ) / gkCellPixSizeY + mTop;
@@ -269,6 +281,10 @@ void cGameState::switchToState(GameState s)
         }
         case GameState::refilling:
         {
+            // For now /////////////////////////////////// diagnostic only! ////////////////////////////
+            mState = GameState::waiting;
+            // For now /////////////////////////////////// diagnostic only! ////////////////////////////
+            
             break;
         }
         case GameState::aftermath:
@@ -277,6 +293,8 @@ void cGameState::switchToState(GameState s)
         }
         case GameState::waiting:
         {
+            mToBlowUp.clear();
+            mTouchedFields.clear();
             break;
         }
     }
@@ -311,13 +329,15 @@ void cGameState::processEvents()
             
             if ( event.type == sf::Event::MouseButtonReleased )
             {
+                mButtonPressed = false;
                 if ( mTouchedFields.size() > 2 )
                 {
                     switchToState(GameState::executing);
+                    mTouchedFields.clear();
+
                 }
                 else
                 {
-                    mButtonPressed = false;
                     mTouchedFields.clear();
                 }
             }
@@ -361,21 +381,21 @@ void cGameState::processEvents()
 void cGameState::prepareHilight(sf::Vector2i v)
 {
     mBoard.mark(v, true);
-    auto p = v.x + v.y * mSizeX;
-    pBoardVA[p].color += gkHilightColor;
-    pBoardVA[p+1].color += gkHilightColor;
-    pBoardVA[p+2].color += gkHilightColor;
-    pBoardVA[p+3].color += gkHilightColor;
+    auto p = v.x * 4 + v.y * 4 * mSizeX;
+    pBoardVA[p].color = gkHilightColor;
+    pBoardVA[p+1].color = gkHilightColor;
+    pBoardVA[p+2].color = gkHilightColor;
+    pBoardVA[p+3].color = gkHilightColor;
 }
 
 void cGameState::removeHilight(sf::Vector2i v)
 {
     mBoard.mark(v, false);
-    auto p = v.x + v.y * mSizeX;
-    pBoardVA[p].color = sf::Color::Black;
-    pBoardVA[p+1].color = sf::Color::Black;
-    pBoardVA[p+2].color = sf::Color::Black;
-    pBoardVA[p+3].color = sf::Color::Black;
+    auto p = v.x * 4 + v.y * mSizeX * 4;
+    pBoardVA[p].color = sf::Color(255, 255, 255, 255);
+    pBoardVA[p+1].color = sf::Color(255, 255, 255, 255);
+    pBoardVA[p+2].color = sf::Color(255, 255, 255, 255);
+    pBoardVA[p+3].color = sf::Color(255, 255, 255, 255);
 }
 
 // Oh god refactor this srsly
@@ -448,7 +468,7 @@ void cGameState::proceedWithExplosions(sf::Time dt)
     // if it points to mTouchFields.end(), then there's
     // nothing left to start exploding.
     
-    if ( itExplode != mTouchedFields.end() )
+    if ( itExplode != mToBlowUp.end() )
     {
         mAccumulatedTime += dt;
         if ( mAccumulatedTime >= gkExplosionDelay )
@@ -464,7 +484,7 @@ void cGameState::proceedWithExplosions(sf::Time dt)
 void cGameState::removeAndCheck()
 {
     for ( int i = 0; i < mSizeX; ++i )
-        for ( int j = mTop; j < mBottom; ++j )
+        for ( int j = mTop; j <= mBottom; ++j )
         {
             if ( mBoard.piece(i,j) != nullptr && mBoard.piece(i,j)->mState == EntState::dead )
             {
@@ -494,7 +514,6 @@ void cGameState::run()
         case GameState::executing:
             proceedWithExplosions(mTimeSinceLastUpdate);
             removeAndCheck();
-            // Then: check if we should start refill, or whatnot
             break;
         case GameState::refilling:
             // Check move logic jne.
@@ -504,6 +523,13 @@ void cGameState::run()
             // waiting, or there's a stageover
             break;
     }
+   
+    for ( int x = 0; x < mSizeX; ++ x )
+        for ( int y = mTop; y <= mBottom; ++y )
+        {
+            auto p = mBoard.piece(x, y);
+            if ( p != nullptr ) p->update(mTimeSinceLastUpdate.asSeconds());
+        }
     
     /*
      

@@ -44,7 +44,7 @@ void cJelly::loadInfo()
     
     if ( mColour == EntColour::random )
     {
-        mColour = static_cast<EntColour>(rand() % 4 + 1);
+        mColour = static_cast<EntColour>(rand() % 5 + 1);
     }
     
     switch (mColour) {
@@ -70,16 +70,16 @@ void cJelly::loadInfo()
         mAnims[anim.mName] = anim;
     }
     
-    // Locate texture; set "still" as basic anim, set anim
+    // Locate texture; set "idle" as basic anim, set anim
     // phase counter to 0
     
-    mSprite.setTexture(rEngine.mTextureHolder.get("jellies"));
-    mSprite.setTextureRect(mAnims["still"].mFirstPhaseRect);
-    pCurrentAnim = &mAnims["still"];
+    mSprite.setTexture(rEngine.mTextureHolder.get(info.mTexID));
+    mSprite.setTextureRect(mAnims["idle"].mFirstPhaseRect);
+    pCurrentAnim = &mAnims["idle"];
     mSprite.setScale(gkCellPixSizeX / static_cast<float>(pCurrentAnim->mFirstPhaseRect.width),
                      gkCellPixSizeY / static_cast<float>(pCurrentAnim->mFirstPhaseRect.height));
     mAnimStepCounter = 0;
-    mCurrentAnimSteps = 1;      // still is still.
+    mCurrentAnimSteps = pCurrentAnim->mSteps;
 }
 
 void cJelly::update(float dt)
@@ -109,14 +109,17 @@ void cJelly::update(float dt)
     // and we reached the last explosion frame, announce that
     // by switching state to dead.
     
-    if ( mCurrentAnimSteps > 1 )
+    // For now, for diagnostic reasons, change the original:
+    // if ( mCurrentAnimSteps > 1 )
+    // to:
+    if ( mCurrentAnimSteps )
     {
         if ( mTimeAccumulated >= pCurrentAnim->mStepTimeInMs )
         {
             mTimeAccumulated = 0.f;
             mAnimStepCounter += 1;
             
-            if ( mState == EntState::exploding && mAnimStepCounter > mCurrentAnimSteps )
+            if ( mState == EntState::exploding && mAnimStepCounter >= mCurrentAnimSteps )
             {
                 mState = EntState::dead;
                 mAnimStepCounter -= 1;      // hold on to last explosion frame

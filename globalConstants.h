@@ -50,14 +50,14 @@ const float                     gkIntroProceedSecs { 5.0 };
 const sf::Time                  gkExplosionDelay { sf::seconds(0.1) };
 
 // Graphics constants
-const float                     gkCellPixSizeX { gkViewSize.y / 9.f };
-const float                     gkCellPixSizeY { gkCellPixSizeX };
-const sf::Vector2f              gkClosedBkgTexCoords { 0, 0 };
-const sf::Vector2f              gkLightBkgTexCoords { 100, 0 };
-const sf::Vector2f              gkDarkBkgTexCoords { 200, 0 };
+const float                     gkCellPixSizeX { 89 };
+const float                     gkCellPixSizeY { 89 };
+const sf::Vector2f              gkClosedBkgTexCoords { 178, 0 };
+const sf::Vector2f              gkLightBkgTexCoords { 0, 0 };
+const sf::Vector2f              gkDarkBkgTexCoords { 89, 0 };
 const float                     gkScrollSpeed { 200 };
 const float                     gkJellySpeed { 600 };               // e.g. when zigzagging
 const float                     gkScrLeft { (gkViewSize.x - (gkCellPixSizeX * 7)) / 2.f };
 const float                     gkScrTop { 0 };
-const sf::Color                 gkHilightColor (120, 0, 0, 80);
+const sf::Color                 gkHilightColor (250, 0, 0, 255);
 #endif

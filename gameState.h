@@ -8,7 +8,7 @@
 
 class cGameState : public cState {
 public:
-    cGameState(cEngine&, const std::string&);       // ctor's 2nd argument: level to be loaded
+    cGameState(cEngine&);
     
     virtual void        init();
     virtual void        run();
@@ -53,7 +53,8 @@ private:
     sf::Vector2f        mBoardPos { 0, 0 };
     sf::Vector2f        mTargetPos { 0, 0 };
     bool                mNeedToScroll { false };
-    
+   
+
     bool                            mButtonPressed { false };
     Direction                       mLastSuperDirection { Direction::undecided };
     

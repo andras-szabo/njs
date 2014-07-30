@@ -13,8 +13,8 @@ class cBoard {
 public:
     cBoard(cEngine& engine, int x = 7, int y = 9, int bottom = 8, int top = 0);
     
-    inline bool         valid(int x, int y) const;
-    inline bool         closed(int x, int y) const { return at(x,y) == -1; }
+    bool                valid(int x, int y) const;
+    bool                closed(int x, int y) const;
     void                init();
     short               at(int x, int y) const;
     void                set(int x, int y, unsigned short value);

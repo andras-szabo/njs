@@ -1,9 +1,12 @@
 #include "engine.h"
 #include "introState.h"
+#include "gameState.h"
 #include <fstream>
 
 cEngine::cEngine()
 {
+    srand(time(nullptr));
+    
     mWindow.create(sf::VideoMode(gkWindowSize.x, gkWindowSize.y), " not jelly splash " + gkVersion);
     mWindow.setVerticalSyncEnabled(true);
     mWindow.setKeyRepeatEnabled(false);
@@ -86,6 +89,8 @@ void cEngine::executeStackChanges()
 void cEngine::pushState(const std::string& s)
 {
     if ( !mStateStack.empty() ) ( *mStateStack.rbegin())->deactivate();
+    
+    if ( s == "game" ) launchState<cGameState>();
     
     // if ( s == "mainMenu" ) launchState<cMenuState>();
     // if ( s == "game" ) launchState<cGameState>();
