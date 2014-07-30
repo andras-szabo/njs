@@ -16,15 +16,15 @@ public:
     virtual void    switchColour(EntColour) = 0;
     virtual void    render(sf::RenderWindow&) = 0;
     virtual void    update(float dt) = 0;
+    virtual void    explode();
+    virtual void    switchToAnim(const std::string&);
     
 public:
     EntType                             mType;
     EntColour                           mColour;
+    EntState                            mState { EntState::normal };
     bool                                mNeedToMove { false };
-    
-    // To produce a single identity number:
-    // type = mType | mColour
-    
+    Direction                           mDir { Direction::undecided };  // super jelly orientation    
     
 protected:
     const cEngine&                      rEngine;

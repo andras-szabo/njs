@@ -2,6 +2,21 @@
 #include "globalConstants.h"
 #include <cmath>
 
+void cEntity::switchToAnim(const std::string& name)
+{
+    if ( mAnims.find(name) == mAnims.end() ) return;
+    
+    pCurrentAnim = &mAnims[name];
+    mTimeAccumulated = 0.f;
+    mAnimStepCounter = 0;
+    mCurrentAnimSteps = pCurrentAnim->mSteps;
+}
+
+void cEntity::explode()
+{
+    switchToAnim("explode");
+    mState = EntState::exploding;
+}
 
 void cEntity::setGoal(float x, float y)
 {
@@ -61,6 +76,8 @@ void cJelly::loadInfo()
     mSprite.setTexture(rEngine.mTextureHolder.get("jellies"));
     mSprite.setTextureRect(mAnims["still"].mFirstPhaseRect);
     pCurrentAnim = &mAnims["still"];
+    mSprite.setScale(gkCellPixSizeX / static_cast<float>(pCurrentAnim->mFirstPhaseRect.width),
+                     gkCellPixSizeY / static_cast<float>(pCurrentAnim->mFirstPhaseRect.height));
     mAnimStepCounter = 0;
     mCurrentAnimSteps = 1;      // still is still.
 }
@@ -88,7 +105,9 @@ void cJelly::update(float dt)
     }
     
     // Update texture & animate via moving the texture rectangle
-    // to wherever it needs to go
+    // to wherever it needs to go. If we're exploding,
+    // and we reached the last explosion frame, announce that
+    // by switching state to dead.
     
     if ( mCurrentAnimSteps > 1 )
     {
@@ -96,6 +115,13 @@ void cJelly::update(float dt)
         {
             mTimeAccumulated = 0.f;
             mAnimStepCounter += 1;
+            
+            if ( mState == EntState::exploding && mAnimStepCounter > mCurrentAnimSteps )
+            {
+                mState = EntState::dead;
+                mAnimStepCounter -= 1;      // hold on to last explosion frame
+            }
+            
             mAnimStepCounter %= mCurrentAnimSteps;
             
             sf::IntRect itmp = pCurrentAnim->mFirstPhaseRect;
@@ -103,6 +129,7 @@ void cJelly::update(float dt)
             mSprite.setTextureRect(itmp);
         }
     }
+    
     
 }
 

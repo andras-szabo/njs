@@ -17,6 +17,7 @@ void cBoard::init()
     for ( int i = 0; i < mSizeX; ++i )
     {
         mCell.push_back(std::vector<short>(mSizeY, 0));
+        mMarked.push_back(std::vector<bool>(mSizeY, false));
         
         // Bit cumbersome with unique ptrs, but so be it
         
@@ -28,6 +29,33 @@ void cBoard::init()
         
         mPieces.push_back(std::move(col));
     }
+}
+
+bool cBoard::marked(sf::Vector2i v) const
+{
+    return valid(v.x, v.y) ? mMarked[v.x][v.y] : false;
+}
+
+void cBoard::mark(sf::Vector2i v, bool flip)
+{
+    if ( valid(v.x, v.y) ) mMarked[v.x][v.y] = flip;
+}
+
+
+void cBoard::resetMarked()
+{
+    for ( int i = 0; i < mSizeX; ++i )
+        for ( int j = 0; j < mSizeY; ++j )
+            mMarked[i][j] = false;
+}
+
+bool cBoard::canBlowUp(sf::Vector2i v)
+{
+    // If invalid, or already marked: nope
+    if ( !valid(v.x, v.y) || mMarked[v.x][v.y] ) return false;
+    
+    // What can't blow up? Diamonds, that's what.
+    return mPieces[v.x][v.y]->mType != EntType::diamond;
 }
 
 bool cBoard::valid(int x, int y) const
@@ -45,9 +73,13 @@ short cBoard::at(int x, int y) const
 bool cBoard::clickable(int x, int y) const
 {
     if (!valid(x, y)) return false;
-    auto p = mCell[x][y] & 15;      // we're only interested in the lower
-                                    // 4 bits (0th - 3rd)
-    return p > 0 && p < 6;          // 0: empty, 6: diamond; in between jellies.
+    
+    // Non-clickable things should have a colour of 0.
+    return mPieces[x][y]->mColour != EntColour::random;
+    
+    //auto p = mCell[x][y] & 15;      // we're only interested in the lower
+    //                                // 4 bits (0th - 3rd)
+    //return p > 0 && p < 6;          // 0: empty, 6: diamond; in between jellies.
     
 }
 
@@ -119,21 +151,24 @@ void cBoard::makeTriplet(int x, int y)
     
 }
 
+// Non-clickable things should have a colour of 0.
+short cBoard::colourAt(sf::Vector2i v) const
+{
+    if ( !valid(v.x, v.y) ) return -1;
+    return static_cast<short>(mPieces[v.x][v.y]->mColour);
+}
 
 short cBoard::neighbourCount(int x, int y) const
 {
     if (!valid(x, y)) return 0;
     
     short count = 0;
-    if ( clickable(x-1, y-1) )  ++count;
-    if ( clickable(x, y-1) )    ++count;
-    if ( clickable(x+1, y-1) )  ++count;
-    if ( clickable(x-1, y) )    ++count;
-    if ( clickable(x+1, y) )    ++count;
-    if ( clickable(x-1, y+1) )  ++count;
-    if ( clickable(x, y+1) )    ++count;
-    if ( clickable(x+1, y+1) )  ++count;
-
+    
+    for ( int i = -1; i < 2; ++i )
+        for ( int j = -1; j < 2; ++j )
+            if ( ( i != 0 || j !=0 ) && clickable(x+i, y+j) )
+                ++count;
+    
     return count;
 }
 
@@ -173,6 +208,12 @@ cEntity* cBoard::piece(int x, int y) const
     return valid(x, y) ? mPieces[x][y].get() : nullptr;
 }
 
+void cBoard::remove(int x, int y)
+{
+    mCell[x][y] = 0;
+    mPieces[x][y].reset(nullptr);
+}
+
 void cBoard::place(int x, int y, EntType t, EntColour c)
 {
     if ( !valid(x, y) ) return;
@@ -180,6 +221,8 @@ void cBoard::place(int x, int y, EntType t, EntColour c)
     switch ( t ) {
         case EntType::jelly: {
             std::unique_ptr<cJelly> ptr = spawn<cJelly> ( c );
+            ptr->setPos(gkScrLeft + x * gkCellPixSizeX,
+                        gkScrTop + (y - mTop) * gkCellPixSizeY);
             mPieces[x][y] = std::move(ptr);
             keepTheBooks(x, y);
             break;
@@ -194,6 +237,5 @@ void cBoard::place(int x, int y, EntType t, EntColour c)
         default:
             break;
     }
-    
 }
 

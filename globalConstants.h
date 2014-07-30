@@ -12,12 +12,19 @@ enum class EntType  : short int { jelly = 1,
                                   block = 5,
                                   guard = 6 };
 
-enum class EntColour: short int {   random = 0,         // or n/a
-                                    red = 1,
-                                    green = 2,
-                                    blue = 3,
-                                    yellow = 4,
-                                    purple = 5 };
+enum class EntColour: short int { random = 0,         // or n/a
+                                red = 1,
+                                green = 2,
+                                blue = 3,
+                                yellow = 4,
+                                purple = 5
+    };
+    
+// Entity states
+enum class EntState: short int { normal, exploding, moving, dead };
+    
+// Directions
+enum class Direction : short int { undecided = 0, horizontal = 1, vertical = 2 };
     
 // Game states
 enum class GameState :  unsigned int { waiting, executing, refilling, aftermath };
@@ -38,14 +45,19 @@ const std::string               gkVersion { " alpha 0.1 " };
 // Intro fade in / proceed length
 const float                     gkIntroFadeInSecs { 1.5 };
 const float                     gkIntroProceedSecs { 5.0 };
+    
+// Explosion delay
+const sf::Time                  gkExplosionDelay { sf::seconds(0.1) };
 
 // Graphics constants
-const float                     gkCellPixSizeX { 100 };
-const float                     gkCellPixSizeY { 100 };
+const float                     gkCellPixSizeX { gkViewSize.y / 9.f };
+const float                     gkCellPixSizeY { gkCellPixSizeX };
 const sf::Vector2f              gkClosedBkgTexCoords { 0, 0 };
 const sf::Vector2f              gkLightBkgTexCoords { 100, 0 };
 const sf::Vector2f              gkDarkBkgTexCoords { 200, 0 };
 const float                     gkScrollSpeed { 200 };
 const float                     gkJellySpeed { 600 };               // e.g. when zigzagging
-
+const float                     gkScrLeft { (gkViewSize.x - (gkCellPixSizeX * 7)) / 2.f };
+const float                     gkScrTop { 0 };
+const sf::Color                 gkHilightColor (120, 0, 0, 80);
 #endif

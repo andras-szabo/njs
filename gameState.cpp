@@ -219,8 +219,15 @@ void cGameState::render()
     //      - low priority: only draw the actually visible parts of the vertexarray
     
     rWindow.draw(&pBoardVA[0], mSizeX * mSizeY * 4, sf::Quads, mBoardState);
+
+    // Now remove hilights from everywhere; much refactoring here,
+    // yea, is advised.
     
-    // Render hilights...?
+    for ( auto x = 0; x < mSizeX; ++x )
+        for ( auto y = mTop; y <= mBottom; ++y )
+            removeHilight(sf::Vector2i(x,y));
+
+    // Render connections
 
     // Render jellies; to make sure, start with one line above mTop.
     for ( int i = 0; i < mSizeX; ++i )
@@ -229,24 +236,264 @@ void cGameState::render()
             cEntity* p = mBoard.piece(i,j);
             if ( p != nullptr ) p->render(rWindow);
         }
-    
-    // Render other things: connections, explosions...
 
     // Render game info
+}
+
+sf::Vector2i cGameState::screenToBoardTranslate(sf::Vector2i v)
+{
+    sf::Vector2i ret;
+    ret.x = (v.x - gkScrLeft) / gkCellPixSizeX;
+    ret.y = (v.y - gkScrTop ) / gkCellPixSizeY + mTop;
+    return ret;
+}
+
+// Are two positions actually adjacent?
+bool cGameState::adjacent(sf::Vector2i a, sf::Vector2i b)
+{
+    return abs(a.x - b.x) <= 1 && abs(a.y - b.y) <= 1;
+}
+
+void cGameState::switchToState(GameState s)
+{
+    mState = s;
+    
+    switch ( s )
+    {
+        case GameState::executing:
+        {
+            itExplode = mToBlowUp.begin();
+            mAccumulatedTime = gkExplosionDelay;    // make sure to blow the first up right away
+            mToExplode = mToBlowUp.size();
+            break;
+        }
+        case GameState::refilling:
+        {
+            break;
+        }
+        case GameState::aftermath:
+        {
+            break;
+        }
+        case GameState::waiting:
+        {
+            break;
+        }
+    }
+}
+
+// Process events, considering current state
+void cGameState::processEvents()
+{
+    sf::Event event;
+    while ( rWindow.pollEvent(event) )
+    {
+        if ( event.type == sf::Event::Closed )
+        {
+            clearRequest();
+            return;
+        }
+        
+        if ( mState == GameState::waiting )
+        {
+            
+            if ( event.type == sf::Event::MouseButtonPressed )
+            {
+                sf::Vector2i    vec = screenToBoardTranslate(sf::Mouse::getPosition(rWindow));
+                if ( mBoard.clickable(vec.x, vec.y) )
+                {
+                    mButtonPressed = true;
+                    mTouchedFields.clear();
+                    mTouchedFields.push_back(vec);
+                    mBoard.piece(vec.x, vec.y)->switchToAnim("awake");       // put the dude into "wake up" state
+                }
+            }
+            
+            if ( event.type == sf::Event::MouseButtonReleased )
+            {
+                if ( mTouchedFields.size() > 2 )
+                {
+                    switchToState(GameState::executing);
+                }
+                else
+                {
+                    mButtonPressed = false;
+                    mTouchedFields.clear();
+                }
+            }
+            // pause, blah
+        }
+    }
+
+    // If in active state, and the mouse is pressed,
+    // check if we have to add another node as
+    // being highlighted, or perhaps change higlighting
+    // because of the player backtracking
+    
+    if ( mState == GameState::waiting && mButtonPressed )
+    {
+        sf::Vector2i currentPos = screenToBoardTranslate(sf::Mouse::getPosition(rWindow));
+        auto it = std::find(mTouchedFields.begin(), mTouchedFields.end(), currentPos);
+        if ( it == mTouchedFields.end() )
+        {
+            // Have to add it if a.) valid, b.) adjacent and c.) fitting in colour
+            // Validity test is implicit: mTouchFields only contains valid nodes.
+            if ( mBoard.colourAt(currentPos) == mBoard.colourAt(*mTouchedFields.begin()) &&
+                 adjacent(currentPos, *mTouchedFields.rbegin()) )
+                {
+                    mTouchedFields.push_back(currentPos);
+                }
+            
+        }
+        else    // Touched field already touched before. If it's the last one, do nothing;
+                // otherwise remove those from mTouched who were touched AFTER current one
+        {
+            ++it;
+            while ( it != mTouchedFields.end() )
+            {
+                mBoard.piece((*it).x, (*it).y)->switchToAnim("idle");
+                it = mTouchedFields.erase(it);
+            }
+        }
+    }
+}
+
+void cGameState::prepareHilight(sf::Vector2i v)
+{
+    mBoard.mark(v, true);
+    auto p = v.x + v.y * mSizeX;
+    pBoardVA[p].color += gkHilightColor;
+    pBoardVA[p+1].color += gkHilightColor;
+    pBoardVA[p+2].color += gkHilightColor;
+    pBoardVA[p+3].color += gkHilightColor;
+}
+
+void cGameState::removeHilight(sf::Vector2i v)
+{
+    mBoard.mark(v, false);
+    auto p = v.x + v.y * mSizeX;
+    pBoardVA[p].color = sf::Color::Black;
+    pBoardVA[p+1].color = sf::Color::Black;
+    pBoardVA[p+2].color = sf::Color::Black;
+    pBoardVA[p+3].color = sf::Color::Black;
+}
+
+// Oh god refactor this srsly
+void cGameState::hilight(sf::Vector2i v)
+{
+    switch ( mLastSuperDirection ) {
+        case Direction::undecided: mLastSuperDirection = mBoard.piece(v.x, v.y)->mDir; break;
+        case Direction::horizontal: mLastSuperDirection = Direction::vertical; break;
+        case Direction::vertical: mLastSuperDirection = Direction::horizontal; break;
+    }
+    
+    sf::Vector2i tmpv = v;
+    
+    if ( mLastSuperDirection == Direction::horizontal )
+    {
+        for ( int x = 0; x < mSizeX; ++x )
+        {
+            tmpv.x = x;
+            if ( x != v.x && mBoard.canBlowUp(tmpv) ) // canBlowUp checks if it's already marked, too
+            {
+                prepareHilight(tmpv);
+                mToBlowUp.push_back(tmpv);
+                if ( mBoard.piece(x, v.y)->mType == EntType::superJelly )
+                {
+                    hilight(tmpv);
+                }
+            }
+        }
+    }
+    else
+    {
+        for ( int y = mTop; y < mBottom; ++y )
+        {
+            tmpv.y = y;
+            if ( y != v.y && mBoard.canBlowUp(tmpv) ) // canBlowUp checks if it's already marked, too
+            {
+                prepareHilight(tmpv);
+                mToBlowUp.push_back(tmpv);
+                if ( mBoard.piece(v.x, y)->mType == EntType::superJelly )
+                    hilight(tmpv);
+            }
+        }
+    }
+    
+}
+
+// Prepares hilights that will mark those fields on the board
+// which are going to be affected by the current move input by the user
+void cGameState::predictOutcome()
+{
+    mToBlowUp.clear();
+    for ( const auto& i : mTouchedFields )
+    {
+        if ( !mBoard.marked(i) )                        // not already marked?
+        {
+            prepareHilight(i);
+            mToBlowUp.push_back(i);
+            
+            if ( mBoard.piece(i.x, i.y)->mType == EntType::superJelly )
+            {
+                hilight(i);     // Will recursively hilight everything
+            }
+        }
+    }
+}
+
+void cGameState::proceedWithExplosions(sf::Time dt)
+{
+    // itExplode points to the next item we should blow up
+    // if it points to mTouchFields.end(), then there's
+    // nothing left to start exploding.
+    
+    if ( itExplode != mTouchedFields.end() )
+    {
+        mAccumulatedTime += dt;
+        if ( mAccumulatedTime >= gkExplosionDelay )
+        {
+            mAccumulatedTime = sf::Time::Zero;
+            mBoard.piece((*itExplode).x, (*itExplode).y)->explode();
+            ++itExplode;
+        }
+    }
+}
+
+// Remove dead jellies, and check if the explosions are over
+void cGameState::removeAndCheck()
+{
+    for ( int i = 0; i < mSizeX; ++i )
+        for ( int j = mTop; j < mBottom; ++j )
+        {
+            if ( mBoard.piece(i,j) != nullptr && mBoard.piece(i,j)->mState == EntState::dead )
+            {
+                mBoard.remove(i,j);
+                mToExplode--;
+            }
+        }
+    
+    if ( mToExplode == 0 )
+    {
+        switchToState(GameState::refilling);
+    }
 }
 
 // run() is called once every frame.
 void cGameState::run()
 {
-    // processEvents();
+    mTimeSinceLastUpdate = mClock.restart();
+    
+    processEvents();
     
     switch ( mState ) {
         case GameState::waiting:
-            //predictOutcome();           // prepares and highlights outcome of move
+            predictOutcome();           // prepares and highlights outcome of move
             //prepareConnections();       // prepares the gfx for connecting jellies
             break;
         case GameState::executing:
-            //proceedWithExplosions();
+            proceedWithExplosions(mTimeSinceLastUpdate);
+            removeAndCheck();
             // Then: check if we should start refill, or whatnot
             break;
         case GameState::refilling:

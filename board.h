@@ -26,6 +26,12 @@ public:
     bool                clickable(int x, int y) const;
     short               neighbourCount(int x, int y) const;
     void                makeTriplet(int x, int y);
+    short               colourAt(sf::Vector2i) const;
+    bool                marked(sf::Vector2i) const;
+    void                mark(sf::Vector2i, bool);
+    void                resetMarked();
+    bool                canBlowUp(sf::Vector2i);
+    void                remove(int x, int y);
 
 private:
     template<class T>
@@ -54,6 +60,7 @@ private:
 
     std::vector<std::vector<short>>                     mCell;
     std::vector<std::vector<std::unique_ptr<cEntity>>>  mPieces;
+    std::vector<std::vector<bool>>                      mMarked;
     cEngine&                                            rEngine;
     
 };
