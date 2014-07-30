@@ -33,6 +33,9 @@ private:
     void                proceedWithExplosions(sf::Time);
     void                switchToState(GameState);
     void                removeAndCheck();
+    void                refillTop();
+    void                proceedWithFalling();
+    bool                fallTo(int, int, int, int, bool vertOnly = false);
     
 public:
     std::string         mLevelName;
@@ -55,8 +58,10 @@ private:
     bool                mNeedToScroll { false };
    
 
-    bool                            mButtonPressed { false };
-    Direction                       mLastSuperDirection { Direction::undecided };
+    bool                mButtonPressed { false };
+    Direction           mLastSuperDirection { Direction::undecided };
+
+    bool                mFell { false };
     
     std::vector<sf::Vector2i>               mTouchedFields;
     std::vector<sf::Vector2i>               mToBlowUp;

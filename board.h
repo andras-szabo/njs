@@ -32,6 +32,8 @@ public:
     void                resetMarked();
     bool                canBlowUp(sf::Vector2i);
     void                remove(int x, int y);
+    bool                fallible(int x, int y) const;
+    void                executeFall(int, int, int, int);
 
 private:
     template<class T>

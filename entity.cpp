@@ -19,20 +19,20 @@ void cEntity::explode()
 }
 
 void cEntity::setGoal(float x, float y)
-{
-    mGoal.x = x; mGoal.y = y;
+{    
+    mGoal.x = x;    mGoal.y = y;
     sf::Vector2f    d = mGoal - mPos;
     float           dist = sqrt(pow(d.x, 2) + pow(d.y, 2));
-
-    dist *= mSpeed;
     
     d.x /= dist;
     d.y /= dist;
     
-    mVel.x = d.x;
-    mVel.y = d.y;
+    mVel.x = d.x * mSpeed;
+    mVel.y = d.y * mSpeed;
     
     mNeedToMove = true;
+    mState = EntState::moving;
+    
 }
 
 void cJelly::loadInfo()
@@ -92,10 +92,11 @@ void cJelly::update(float dt)
     {
         sf::Vector2f d = mGoal - mPos;
         float dist = (pow(d.x, 2) + pow(d.y, 2));   // first, dist squared, but
-        if ( dist < 0.1 )                           // you get the idea
+        if ( dist < gkNearEnough )                           // you get the idea
         {
             mPos = mGoal;
             mNeedToMove = false;
+            mState = EntState::normal;
             mVel.x = 0; mVel.y = 0;
         }
         else
@@ -150,6 +151,7 @@ cEntity { engine }
     mSpeed = gkJellySpeed;
     loadInfo();
     mSpeed = gkJellySpeed;
+    mType = EntType::jelly;
 }
 
 void cJelly::render(sf::RenderWindow& window)

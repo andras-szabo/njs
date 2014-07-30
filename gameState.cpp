@@ -8,7 +8,6 @@ cGameState::cGameState(cEngine& engine):
 cState { engine, "game" },
 mState { GameState::waiting }
 {
-    std::cout << "loading level\n";
     loadLevel(rEngine.mStrParam);
     fillLevel();
 }
@@ -22,7 +21,7 @@ mState { GameState::waiting }
 void cGameState::fillLevel()
 {
     for ( int i = 0; i < mSizeX; ++i )
-        for ( int j = 0; j < mSizeY; ++j )
+        for ( int j = mTop; j < mSizeY; ++j )
         {
             if ( mBoard.at(i,j) == 0 )                  // empty
             {
@@ -99,6 +98,9 @@ void cGameState::loadLevel(const std::string& sLevel)
     inFile >> mSizeX >> mSizeY >> mTop >> mBottom;
     inFile >> mStarScores[0] >> mStarScores[1] >> mStarScores[2];
     
+    mBoardPos.x = 0;
+    mBoardPos.y = -mTop * gkCellPixSizeY;
+    
     mBoard.reCreate(mSizeX, mSizeY, mTop, mBottom);
     
     std::string     stmp;
@@ -168,7 +170,6 @@ void cGameState::scrollBoard(float dt)
         mNeedToScroll = false;
     }
     
-    mBoardState.blendMode = sf::BlendMode::BlendMultiply;
     mBoardState.transform.translate(mBoardPos);
 }
 
@@ -204,7 +205,11 @@ void cGameState::setUpGraphics()
         }
     
     // Set up renderstate for board rendering
+    
     mBoardState.texture = &rEngine.mTextureHolder.get("assets");
+    mBoardState.blendMode = sf::BlendMode::BlendNone;
+    mBoardState.transform.translate(mBoardPos);
+
 }
 
 void cGameState::init()
@@ -281,14 +286,21 @@ void cGameState::switchToState(GameState s)
         }
         case GameState::refilling:
         {
-            // For now /////////////////////////////////// diagnostic only! ////////////////////////////
-            mState = GameState::waiting;
-            // For now /////////////////////////////////// diagnostic only! ////////////////////////////
+            // To get the falling started, set mFell
+            // to true. (Jellies will try to fall if: they all are in "normal"
+            // state, and at least one of them managed to fall in the
+            // previous iteration - as marked by mFell.)
             
+            refillTop();
+            mFell = true;
             break;
         }
         case GameState::aftermath:
         {
+            // Diagnostic! ////////////////////////////////////////////////////////////////////
+            mState = GameState::waiting;
+            mToBlowUp.clear();
+            mTouchedFields.clear();
             break;
         }
         case GameState::waiting:
@@ -499,6 +511,129 @@ void cGameState::removeAndCheck()
     }
 }
 
+// OK so the following happens here.
+// Each iteration, fill up the line just above mTop, wherever
+// this is possible (i.e. inaccessible terrain stays inaccessible
+// even when we've scrolled on). Then, make entities fall, 1 row
+// a time. When entities finished falling, refill above-the-top
+// line; and continue falling until this is not possible anymore.
+void cGameState::refillTop()
+{
+    // Fill up above-the-top line. mBoard.place() won't do anything
+    // if that's an invalid field; and it'll overwrite whatever is
+    // on that position, in case there's something there.
+    for ( int x = 0; x < mSizeX; ++x )
+    {
+        mBoard.place(x, mTop-1, EntType::jelly);
+    }
+}
+
+bool cGameState::fallTo(int p, int q, int x, int y, bool vertOnly)
+{
+    if ( p < 0 || p >= mSizeX || q < 0 || q > mBottom ) return false;
+    if ( x < 0 || x >= mSizeX || y < 0 || y > mBottom ) return false;
+
+    if ( mBoard.fallible(p,q) && mBoard.piece(p,q)->mState != EntState::moving )
+    {
+        if ( mBoard.at(x,y) == 0 )
+        {
+            mBoard.executeFall(p, q, x, y);
+            return true;
+        }
+        if ( !vertOnly && x > 0 && mBoard.at(x-1, y) == 0 )
+        {
+            mBoard.executeFall(p, q, x-1, y);
+            return true;
+        }
+        if ( !vertOnly && x < mSizeX-1 && mBoard.at(x+1, y) == 0 )
+        {
+            mBoard.executeFall(p, q, x+1, y);
+            return true;
+        }
+        
+        if ( mBoard.fallible(x,y) && fallTo(x,y,x,y+1,vertOnly) )
+        {
+            mBoard.executeFall(p,q,x,y);
+            return true;
+        }
+        
+        if ( !vertOnly && x > 0 && mBoard.fallible(x-1, y) && fallTo(x-1,y,x-1,y+1,vertOnly) )
+        {
+            mBoard.executeFall(p,q,x-1,y);
+            return true;
+        }
+        
+        if ( !vertOnly && x < mSizeX-1 && mBoard.fallible(x+1, y) && fallTo(x+1,y,x+1,y+1,vertOnly) )
+        {
+            mBoard.executeFall(p,q,x+1,y);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
+void cGameState::proceedWithFalling()
+{
+    if ( !mFell )
+    {
+        // Falling is over - it's impossible to fall any more
+        // So: clear above-the-top line, and go on to aftermath
+        for ( int x = 0; x < mSizeX; ++x )
+        {
+            if ( mBoard.clickable(x, mTop-1) )
+            {
+                mBoard.remove(x, mTop-1);
+            }
+        }
+        switchToState(GameState::aftermath);
+    }
+    
+    bool proceed { true };
+    for ( int i = 0; i < mSizeX; ++i )
+    {
+        for ( int j = mTop; j <= mBottom; ++j )
+        {
+            if ( mBoard.piece(i,j) != nullptr && mBoard.piece(i,j)->mState == EntState::moving )
+            {
+                proceed = false;
+                break;
+            }
+        }
+        if ( !proceed ) break;
+    }
+    
+    if ( !proceed ) return;         // we'll wait until each jelly finishes falling
+    
+    refillTop();
+    
+    // Now iterate through each column from bottom to top, and try to make things
+    // fall. fallTo() takes care of the actual falling; and returns true if
+    // it was possible to fall.
+    
+    mFell = false;
+    
+    for ( int i = 0; i < mSizeX; ++i )
+    {
+        for ( int j = mBottom - 1; j >= mTop-1; --j )
+        {
+            bool well = fallTo(i, j, i, j+1, true);     // at first: fall "vert only"
+            mFell = well || mFell;
+        }
+    }
+
+    for ( int i = 0; i < mSizeX; ++i )
+    {
+        for ( int j = mBottom - 1; j >= mTop-1; --j )
+        {
+            bool well = fallTo(i, j, i, j+1, false);    // now try sideways too
+            mFell = well || mFell;
+        }
+    }
+    
+}
+
 // run() is called once every frame.
 void cGameState::run()
 {
@@ -516,7 +651,7 @@ void cGameState::run()
             removeAndCheck();
             break;
         case GameState::refilling:
-            // Check move logic jne.
+            proceedWithFalling();
             break;
         case GameState::aftermath:
             // check if we're finished and can get back to

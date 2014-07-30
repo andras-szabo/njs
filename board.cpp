@@ -64,7 +64,7 @@ bool cBoard::valid(int x, int y) const
 {
     // Can we refer to a given pair of coordinates as valid?
     // Not if they are out of scope or pointing to inaccessible field.
-    return x >= 0 && x < mSizeX && y >= mTop && y <= mBottom && mCell[x][y] != -1;
+    return x >= 0 && x < mSizeX && y >= mTop-1 && y <= mBottom && mCell[x][y] != -1;
 }
 
 short cBoard::at(int x, int y) const
@@ -98,33 +98,34 @@ void cBoard::keepTheBooks(int x, int y)
 {
     if ( valid(x, y) )
     {
-        short int tmp;
+        short int tmp { 0 };
         
-        auto t = mPieces[x][y]->mType;
-        switch ( t ) {
-            case EntType::jelly:    tmp = static_cast<short>(mPieces[x][y]->mColour); break;
-            case EntType::diamond:      tmp = 6;    break;
-            case EntType::block:        tmp = 7;    break;
-            case EntType::guard:        tmp = 8;    break;
-            case EntType::superJelly:
-            {
-                tmp = static_cast<short>(mPieces[x][y]->mColour);
-                tmp |= 32;      // set the "superjelly!" bit
-                break;
-            }
-            case EntType::stuckJelly:
-            {
-                tmp = static_cast<short>(mPieces[x][y]->mColour);
-                tmp |= 64;      // set the "stuck jelly!" bit
-                break;
+        if ( mPieces[x][y] != nullptr )
+        {
+            auto t = mPieces[x][y]->mType;
+            switch ( t ) {
+                case EntType::jelly:    tmp = static_cast<short>(mPieces[x][y]->mColour); break;
+                case EntType::diamond:      tmp = 6;    break;
+                case EntType::block:        tmp = 7;    break;
+                case EntType::guard:        tmp = 8;    break;
+                case EntType::superJelly:
+                {
+                    tmp = static_cast<short>(mPieces[x][y]->mColour);
+                    tmp |= 32;      // set the "superjelly!" bit
+                    break;
+                }
+                case EntType::stuckJelly:
+                {
+                    tmp = static_cast<short>(mPieces[x][y]->mColour);
+                    tmp |= 64;      // set the "stuck jelly!" bit
+                    break;
+                }
             }
         }
         
         // Consider the "slime bit"
         short slimeBit = mCell[x][y] ^ (255-128);
-        
         tmp |= slimeBit;
-        
         mCell[x][y] = tmp;
     }
 }
@@ -161,6 +162,18 @@ short cBoard::colourAt(sf::Vector2i v) const
     return static_cast<short>(mPieces[v.x][v.y]->mColour);
 }
 
+bool cBoard::fallible(int x, int y) const
+{
+    if ( !valid(x, y) || mCell[x][y] == 0 ) return false;
+    
+    EntType t = mPieces[x][y]->mType;
+        
+    return  t == EntType::jelly ||
+            t == EntType::superJelly ||
+            t == EntType::stuckJelly ||
+            t == EntType::diamond;
+}
+
 short cBoard::neighbourCount(int x, int y) const
 {
     if (!valid(x, y)) return 0;
@@ -173,6 +186,24 @@ short cBoard::neighbourCount(int x, int y) const
                 ++count;
     
     return count;
+}
+
+// From (p,q), fall to (x,y), which is an adjacent
+// cell below.
+void cBoard::executeFall(int p, int q, int x, int y)
+{
+    mPieces[x][y] = std::move(mPieces[p][q]);
+    
+    // Make sure that bookkeeping is done, and
+    // e.g. slime stays where it should
+    
+    keepTheBooks(p, q);
+    keepTheBooks(x, y);
+    
+    // Now all we need to do is tell the piece that
+    // it has to move.
+    
+    mPieces[x][y]->setGoal(gkScrLeft + x * gkCellPixSizeX, gkScrTop + (y - mTop) * gkCellPixSizeY);
 }
 
 void cBoard::set(int x, int y, unsigned short value)
@@ -214,13 +245,21 @@ cEntity* cBoard::piece(int x, int y) const
 
 void cBoard::remove(int x, int y)
 {
-    mCell[x][y] = 0;
     mPieces[x][y].reset(nullptr);
+    keepTheBooks(x, y);
 }
 
 void cBoard::place(int x, int y, EntType t, EntColour c)
 {
     if ( !valid(x, y) ) return;
+    
+    // If something already here: kill it, and replace it
+    // with new entity.
+    
+    if ( mCell[x][y] != 0 )
+    {
+        remove(x,y);
+    }
     
     switch ( t ) {
         case EntType::jelly: {

@@ -56,7 +56,8 @@ const sf::Vector2f              gkClosedBkgTexCoords { 178, 0 };
 const sf::Vector2f              gkLightBkgTexCoords { 0, 0 };
 const sf::Vector2f              gkDarkBkgTexCoords { 89, 0 };
 const float                     gkScrollSpeed { 200 };
-const float                     gkJellySpeed { 600 };               // e.g. when zigzagging
+const float                     gkJellySpeed { 400 };               // e.g. when zigzagging
+const float                     gkNearEnough { 20 };
 const float                     gkScrLeft { (gkViewSize.x - (gkCellPixSizeX * 7)) / 2.f };
 const float                     gkScrTop { 0 };
 const sf::Color                 gkHilightColor (250, 0, 0, 255);
