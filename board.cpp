@@ -54,7 +54,7 @@ void cBoard::resetMarked()
 bool cBoard::canBlowUp(sf::Vector2i v)
 {
     // If invalid, or already marked: nope
-    if ( !valid(v.x, v.y) || mMarked[v.x][v.y] ) return false;
+    if ( !valid(v.x, v.y) || mMarked[v.x][v.y] || empty(v.x, v.y) ) return false;
     
     // What can't blow up? Diamonds, that's what.
     return mPieces[v.x][v.y]->mType != EntType::diamond;

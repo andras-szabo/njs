@@ -2,6 +2,13 @@
 #include "globalConstants.h"
 #include <cmath>
 
+void cEntity::predictDamage(int x)
+{
+    if ( mPredictedDmg == x ) return;
+    mPredictedDmg = x;
+    tLives.setString(std::to_string(mLives - x));
+}
+
 void cEntity::loadInfo(const std::string& id)
 {
     const cEntityInfo& info = rEngine.mEntityHolder.get(id);
@@ -37,10 +44,12 @@ void cEntity::switchToAnim(const std::string& name)
     mCurrentAnimSteps = pCurrentAnim->mSteps;
 }
 
-void cEntity::explode()
+void cEntity::explode(int dmg)
 {
     switchToAnim("explode");
     mState = EntState::exploding;
+    mLives -= dmg;
+    tLives.setString(std::to_string(mLives));
 }
 
 void cEntity::setGoal(float x, float y)
@@ -100,7 +109,9 @@ void cEntity::update(float dt)
             
             if ( mState == EntState::exploding && mAnimStepCounter >= mCurrentAnimSteps )
             {
-                mState = EntState::dead;
+                // mLives are modified by explode(). When the explosion over, cGameState
+                // will check the # of lives and decide whether the piece should go or stay
+                mState = EntState::explOver;
                 mAnimStepCounter -= 1;      // hold on to last explosion frame
             }
             
@@ -185,6 +196,13 @@ void cJelly::force(Direction dir)
     mSwitched = true;
 }
 
+void cJelly::setLives(int x)
+{
+    if ( x >= 1) mLives = x;
+    if ( mLives > 1 )
+        tLives.setString(std::to_string(mLives));
+}
+
 void cJelly::render(sf::RenderWindow& window)
 {
     if ( mSuper )
@@ -214,4 +232,14 @@ void cJelly::render(sf::RenderWindow& window)
         mDir = mDir == Direction::vertical ? Direction::horizontal : Direction::vertical;
         mSwitched = false;
     }
+    
+    // Finally, draw the # of lives, if necessary;
+    // and update predicted damage
+    if ( mLives - mPredictedDmg > 1 )
+    {
+        tLives.setPosition(mPos);
+        window.draw(tLives);
+    }
+    
+    if ( mPredictedDmg != 0 ) predictDamage(0);
 }

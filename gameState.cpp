@@ -152,6 +152,10 @@ void cGameState::loadLevel(const std::string& sLevel)
             short int ztmp, qtmp;
             inFile >> ztmp >> qtmp;
             
+            mBoard.place(xtmp, ytmp, EntType::jelly, static_cast<EntColour>(ztmp));
+            cJelly* ptr = dynamic_cast<cJelly*>(mBoard.piece(xtmp, ytmp));
+            if ( ptr != nullptr ) ptr->setLives(qtmp);
+            
             // spawn stuck jelly, of colour ztmp, and with qtmp number of lives
         }
         inFile >> stmp;
@@ -304,6 +308,9 @@ void cGameState::switchToState(GameState s)
     {
         case GameState::executing:
         {
+            
+            // Then set about making things explode in a timely manner
+            
             itExplode = mToBlowUp.begin();
             mAccumulatedTime = gkExplosionDelay;    // make sure to blow the first up right away
             mToExplode = mToBlowUp.size();
@@ -315,7 +322,6 @@ void cGameState::switchToState(GameState s)
             // to true. (Jellies will try to fall if: they all are in "normal"
             // state, and at least one of them managed to fall in the
             // previous iteration - as marked by mFell.)
-            
             refillTop();
             mFell = true;
             break;
@@ -415,6 +421,7 @@ void cGameState::processEvents()
     }
 }
 
+// Prepare the highlight on the board
 void cGameState::prepareHilight(sf::Vector2i v)
 {
     mBoard.mark(v, true);
@@ -435,7 +442,6 @@ void cGameState::removeHilight(sf::Vector2i v)
     pBoardVA[p+3].color = sf::Color(255, 255, 255, 255);
 }
 
-// Oh god refactor this srsly
 void cGameState::hilight(sf::Vector2i v, bool lastOne)
 {
     if ( !lastOne )
@@ -463,11 +469,16 @@ void cGameState::hilight(sf::Vector2i v, bool lastOne)
                             ptr->force(Direction::horizontal);
                             break;
                         }
+            default: break;
         }
     }
     }
     else
     {
+        // If we're here: we're now at the end of the hilighting-trip, so to say;
+        // i.e. now we have to highlight the effects of the FIRST super jelly
+        // touched by the user. (The effects of the first-touched super manifest
+        // themselves at the LAST touched coordinate.)
         mLastSuperDirection = mFirstSuperDirection;
     }
     
@@ -486,7 +497,7 @@ void cGameState::hilight(sf::Vector2i v, bool lastOne)
     
     while ( bounds(v.x + stepx, v.y + stepy) || bounds(v.x-stepx, v.y-stepy) )
     {
-        for ( int i = 1; i > -2;  i -= 2)
+        for ( int i = 1; i > -2;  i -= 2)       // i: first 1, then -1
         {
             tmpv.x = v.x + (stepx * i);   tmpv.y = v.y + (stepy * i);
             if ( mBoard.canBlowUp(tmpv) )
@@ -529,6 +540,9 @@ void cGameState::predictOutcome()
     {
         hilight(*mTouchedFields.rbegin(), true);
     }
+    
+    for ( const auto& i : mToBlowUp )
+        mBoard.piece(i.x, i.y)->predictDamage(mToBlowUp.size());
 }
 
 void cGameState::proceedWithExplosions(sf::Time dt)
@@ -543,7 +557,7 @@ void cGameState::proceedWithExplosions(sf::Time dt)
         if ( mAccumulatedTime >= gkExplosionDelay )
         {
             mAccumulatedTime = sf::Time::Zero;
-            mBoard.piece((*itExplode).x, (*itExplode).y)->explode();
+            mBoard.piece((*itExplode).x, (*itExplode).y)->explode(mToBlowUp.size());
             ++itExplode;
         }
     }
@@ -555,29 +569,32 @@ void cGameState::removeAndCheck()
     for ( int i = 0; i < mSizeX; ++i )
         for ( int j = mTop; j <= mBottom; ++j )
         {
-            if ( mBoard.piece(i,j) != nullptr && mBoard.piece(i,j)->mState == EntState::dead )
+            if ( mBoard.piece(i,j) != nullptr && mBoard.piece(i,j)->mState == EntState::explOver )
             {
-                mBoard.remove(i,j);
-                
-                // Also remove slime, and reset appropriate coords of the vertexarray
-                if ( mBoard.slime(i,j) )
+                --mToExplode;
+                if ( mBoard.piece(i,j)->mLives <= 0 )
                 {
-                    --mSlimeCount;
-                    mBoard.set(i, j, 0);
-                    auto p = i * 4 + j * 4 * mSizeX;
-                    auto texcoords = ( i + j ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
-                    
-                    pBoardVA[p].texCoords   = texcoords;
-                    pBoardVA[p+1].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, 0 };
-                    pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
-                    pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
-                }
+                    mBoard.remove(i,j);
                 
-                mToExplode--;
+                    // Also remove slime, and reset appropriate coords of the vertexarray
+                    if ( mBoard.slime(i,j) )
+                    {
+                        --mSlimeCount;
+                        mBoard.set(i, j, 0);
+                        auto p = i * 4 + j * 4 * mSizeX;
+                        auto texcoords = ( i + j ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
+                    
+                        pBoardVA[p].texCoords   = texcoords;
+                        pBoardVA[p+1].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, 0 };
+                        pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
+                        pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
+                    }
+                }
+                else { mBoard.piece(i,j)->mState = EntState::normal; }
             }
         }
     
-    if ( mToExplode == 0 )
+    if ( mToExplode <= 0 )
     {
         switchToState(GameState::refilling);
     }

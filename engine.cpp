@@ -20,6 +20,9 @@ cEngine::cEngine()
     // Load entities, as listed in "entities.lst", each with ".ent" extension
     mEntityHolder.loadAllFromList("entities", ".ent");
     
+    // Load fonts
+    mFontHolder.load(FontID::defaultFont, "kenvector_future_thin.ttf");
+    
     mView.setSize(gkViewSize.x, gkViewSize.y);
     mView.setCenter(gkViewSize.x / 2, gkViewSize.y / 2);
     mView.setViewport(sf::FloatRect(0,0,1,1));

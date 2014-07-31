@@ -8,15 +8,22 @@
 
 class cEntity {
 public:
-    cEntity(cEngine& engine, const std::string& id): rEngine { engine } { loadInfo(id); }
+    cEntity(cEngine& engine, const std::string& id): rEngine { engine }
+    {
+        loadInfo(id);
+        tLives.setFont(rEngine.mFontHolder.get(FontID::defaultFont));
+        tLives.setCharacterSize(18);
+        tLives.setColor(sf::Color::Cyan);
+    }
     
     void            setPos(float x, float y) { mPos.x = x; mPos.y = y; }
     void            setGoal(float x, float y);
+    void            predictDamage(int);
     
     virtual void    switchColour(EntColour) = 0;
     virtual void    render(sf::RenderWindow&) = 0;
     virtual void    update(float dt);
-    virtual void    explode();
+    virtual void    explode(int dmg = 1);
     virtual void    switchToAnim(const std::string&);
 
 protected:
@@ -30,6 +37,9 @@ public:
     Direction                           mDir { Direction::undecided };  // super jelly orientation
     bool                                mSuper { false };   // super jelly?
     int                                 mLives { 1 };
+    int                                 mPredictedDmg { 0 };
+    
+    sf::Text                            tLives;
     
 protected:
     const cEngine&                      rEngine;
@@ -54,6 +64,7 @@ public:
     
     void                makeSuper(Direction dir = Direction::undecided);
     void                force(Direction dir);
+    void                setLives(int x);
     
     
 protected:

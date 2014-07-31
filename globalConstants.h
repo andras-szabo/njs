@@ -19,7 +19,7 @@ enum class EntColour: short int { random = 0,         // or n/a
     };
     
 // Entity states
-enum class EntState: short int { normal, exploding, moving, dead };
+enum class EntState: short int { normal, exploding, moving, explOver };
     
 // Directions
 enum class Direction : short int { undecided = 0, horizontal = 1, vertical = 2 };
