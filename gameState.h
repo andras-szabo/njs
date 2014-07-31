@@ -27,7 +27,7 @@ private:
     sf::Vector2i        screenToBoardTranslate(sf::Vector2i);
     bool                adjacent(sf::Vector2i, sf::Vector2i);
     void                predictOutcome();       // prepares hilights marking affected fields
-    void                hilight(sf::Vector2i);
+    void                hilight(sf::Vector2i, bool lastOne = false);
     void                prepareHilight(sf::Vector2i);
     void                removeHilight(sf::Vector2i);
     void                proceedWithExplosions(sf::Time);
@@ -60,9 +60,10 @@ private:
 
     bool                mButtonPressed { false };
     Direction           mLastSuperDirection { Direction::undecided };
+    Direction           mFirstSuperDirection { Direction::undecided };
 
     bool                mFell { false };
-    
+   
     std::vector<sf::Vector2i>               mTouchedFields;
     std::vector<sf::Vector2i>               mToBlowUp;
     std::vector<sf::Vector2i>::iterator     itExplode;

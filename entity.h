@@ -50,8 +50,11 @@ public:
     cJelly(cEngine& engine, const std::string& id);
     virtual void        switchColour(EntColour) override;
     virtual void        render(sf::RenderWindow&) override;
-
+    virtual void        update(float dt) override;
+    
     void                makeSuper(Direction dir = Direction::undecided);
+    void                force(Direction dir);
+    
     
 protected:
     sf::Sprite          mSuperSprite;
@@ -59,6 +62,7 @@ protected:
     int                 mSuperAnimSteps;
     cAnimation*         pSuperAnim;
     float               mSuperTimeAccumulated { 0.f };
+    bool                mSwitched { false };
     
 };
 

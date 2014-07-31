@@ -10,6 +10,27 @@ mState { GameState::waiting }
 {
     loadLevel(rEngine.mStrParam);
     fillLevel();
+    
+    // Diagnostics! //////////////////////////////////////////////////////////////////////////////
+    cJelly* ptr = dynamic_cast<cJelly*>(mBoard.piece(5,5));
+    if ( ptr != nullptr )
+    {
+        ptr->makeSuper();
+    }
+    
+    ptr = dynamic_cast<cJelly*>(mBoard.piece(4,5));
+    if ( ptr != nullptr )
+    {
+        ptr->makeSuper();
+    }
+
+    ptr = dynamic_cast<cJelly*>(mBoard.piece(3,3));
+    if ( ptr != nullptr )
+    {
+        ptr->makeSuper();
+    }
+
+    
 }
 
 // Fills level up with random jellies. This is not to be confused
@@ -207,7 +228,7 @@ void cGameState::setUpGraphics()
     // Set up renderstate for board rendering
     
     mBoardState.texture = &rEngine.mTextureHolder.get("assets");
-    mBoardState.blendMode = sf::BlendMode::BlendNone;
+    mBoardState.blendMode = sf::BlendMode::BlendAlpha;
     mBoardState.transform.translate(mBoardPos);
 
 }
@@ -411,14 +432,40 @@ void cGameState::removeHilight(sf::Vector2i v)
 }
 
 // Oh god refactor this srsly
-void cGameState::hilight(sf::Vector2i v)
+void cGameState::hilight(sf::Vector2i v, bool lastOne)
 {
-    switch ( mLastSuperDirection ) {
-        case Direction::undecided: mLastSuperDirection = mBoard.piece(v.x, v.y)->mDir; break;
-        case Direction::horizontal: mLastSuperDirection = Direction::vertical; break;
-        case Direction::vertical: mLastSuperDirection = Direction::horizontal; break;
+    if ( !lastOne )
+    {
+        if ( mFirstSuperDirection == Direction::undecided )
+        {
+        mFirstSuperDirection = mBoard.piece(v.x, v.y)->mDir;
+        mLastSuperDirection = mFirstSuperDirection;
+        return;
     }
-    
+        else
+        {
+        switch ( mLastSuperDirection ) {
+            case Direction::horizontal:
+                        {
+                            mLastSuperDirection = Direction::vertical;
+                            cJelly* ptr = dynamic_cast<cJelly*>(mBoard.piece(v.x, v.y));
+                            ptr->force(Direction::vertical);
+                            break;
+                        }
+            case Direction::vertical:
+                        {
+                            mLastSuperDirection = Direction::horizontal;
+                            cJelly* ptr = dynamic_cast<cJelly*>(mBoard.piece(v.x, v.y));
+                            ptr->force(Direction::horizontal);
+                            break;
+                        }
+        }
+    }
+    }
+    else
+    {
+        mLastSuperDirection = mFirstSuperDirection;
+    }
     sf::Vector2i tmpv = v;
     
     if ( mLastSuperDirection == Direction::horizontal )
@@ -439,7 +486,7 @@ void cGameState::hilight(sf::Vector2i v)
     }
     else
     {
-        for ( int y = mTop; y < mBottom; ++y )
+        for ( int y = mTop; y <= mBottom; ++y )
         {
             tmpv.y = y;
             if ( y != v.y && mBoard.canBlowUp(tmpv) ) // canBlowUp checks if it's already marked, too
@@ -459,6 +506,8 @@ void cGameState::hilight(sf::Vector2i v)
 void cGameState::predictOutcome()
 {
     mToBlowUp.clear();
+    mFirstSuperDirection = Direction::undecided;
+    mLastSuperDirection = Direction::undecided;
     for ( const auto& i : mTouchedFields )
     {
         if ( !mBoard.marked(i) )                        // not already marked?
@@ -471,6 +520,11 @@ void cGameState::predictOutcome()
                 hilight(i);     // Will recursively hilight everything
             }
         }
+    }
+    
+    if ( mFirstSuperDirection != Direction::undecided )
+    {
+        hilight(*mTouchedFields.rbegin(), true);
     }
 }
 

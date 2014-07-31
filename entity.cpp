@@ -113,6 +113,25 @@ void cEntity::update(float dt)
     }
 }
 
+//Calls regular update; and then, if neccessary,
+// updates superjelly sprite as well
+void cJelly::update(float dt)
+{
+    cEntity::update(dt);
+    if ( mSuper )
+    {
+        mSuperTimeAccumulated += dt;
+        if ( mSuperTimeAccumulated >= pSuperAnim->mStepTimeInMs )
+        {
+            mSuperTimeAccumulated = 0.f;
+            ++mSuperAnimStepCounter %= mSuperAnimSteps;
+            sf::IntRect itmp = pSuperAnim->mFirstPhaseRect;
+            itmp.left += (itmp.width * mSuperAnimStepCounter);
+            mSuperSprite.setTextureRect(itmp);
+        }
+    }
+}
+
 void cJelly::switchColour(EntColour c)
 {
     mColour = c;
@@ -152,19 +171,47 @@ void cJelly::makeSuper(Direction dir)
 
     mSuperSprite.setTexture(rEngine.mTextureHolder.get("assets"));
     mSuperSprite.setTextureRect(pSuperAnim->mFirstPhaseRect);
-    mSuperSprite.setScale( gkCellPixSizeX / pSuperAnim->mFirstPhaseRect.width,
-                           gkCellPixSizeY / pSuperAnim->mFirstPhaseRect.height );
+    mSuperSprite.setScale( gkCellPixSizeX / static_cast<float>(pSuperAnim->mFirstPhaseRect.width),
+                           gkCellPixSizeY / static_cast<float>(pSuperAnim->mFirstPhaseRect.height));
 
     
+}
+
+void cJelly::force(Direction dir)
+{
+    if ( mDir == dir ) return;
+    
+    mDir = dir;
+    mSwitched = true;
 }
 
 void cJelly::render(sf::RenderWindow& window)
 {
     if ( mSuper )
     {
-        mSuperSprite.setPosition(mPos);
+        if ( mDir == Direction::vertical )
+        {
+            // Since we're rotating around the top left corner,
+            // we need to toy w/ the position
+            mSuperSprite.setRotation(90);
+            mSuperSprite.setPosition(mPos.x + gkCellPixSizeX, mPos.y);
+        }
+        else
+        {
+            mSuperSprite.setRotation(0);
+            mSuperSprite.setPosition(mPos);
+        }
         window.draw(mSuperSprite);
     }
     mSprite.setPosition(mPos);
     window.draw(mSprite);
+    
+    // If we were forced to turn orientation b/c of supers,
+    // switch it back after rendering.
+    
+    if ( mSwitched )
+    {
+        mDir = mDir == Direction::vertical ? Direction::horizontal : Direction::vertical;
+        mSwitched = false;
+    }
 }

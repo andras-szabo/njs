@@ -58,5 +58,5 @@ const float                     gkJellySpeed { 400 };               // e.g. when
 const float                     gkNearEnough { 20 };
 const float                     gkScrLeft { (gkViewSize.x - (gkCellPixSizeX * 7)) / 2.f };
 const float                     gkScrTop { 0 };
-const sf::Color                 gkHilightColor (250, 0, 0, 255);
+const sf::Color                 gkHilightColor (220, 120, 220, 120);
 #endif
