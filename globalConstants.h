@@ -6,11 +6,9 @@
 
 // Entity IDs (colour is an attribute of entities)
 enum class EntType  : short int { jelly = 1,
-                                  superJelly = 2,
-                                  stuckJelly = 3,
-                                  diamond = 4,
-                                  block = 5,
-                                  guard = 6 };
+                                  diamond = 2,
+                                  block = 3,
+                                  guard = 4 };
 
 enum class EntColour: short int { random = 0,         // or n/a
                                 red = 1,

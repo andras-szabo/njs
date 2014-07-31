@@ -2,6 +2,31 @@
 #include "globalConstants.h"
 #include <cmath>
 
+void cEntity::loadInfo(const std::string& id)
+{
+    const cEntityInfo& info = rEngine.mEntityHolder.get(id);
+    mType = info.mType;
+    mColour = info.mColour;
+    // Load animations
+    
+    for ( const auto& i : info.mAnimations )
+    {
+        cAnimation anim = rEngine.mAnimationHolder.get(i);
+        mAnims[anim.mName] = anim;
+    }
+    
+    // Locate texture; set "idle" as basic anim, set anim
+    // phase counter to 0
+    
+    mSprite.setTexture(rEngine.mTextureHolder.get(info.mTexID));
+    mSprite.setTextureRect(mAnims["idle"].mFirstPhaseRect);
+    pCurrentAnim = &mAnims["idle"];
+    mSprite.setScale(gkCellPixSizeX / static_cast<float>(pCurrentAnim->mFirstPhaseRect.width),
+                     gkCellPixSizeY / static_cast<float>(pCurrentAnim->mFirstPhaseRect.height));
+    mAnimStepCounter = 0;
+    mCurrentAnimSteps = pCurrentAnim->mSteps;
+}
+
 void cEntity::switchToAnim(const std::string& name)
 {
     if ( mAnims.find(name) == mAnims.end() ) return;
@@ -32,57 +57,9 @@ void cEntity::setGoal(float x, float y)
     
     mNeedToMove = true;
     mState = EntState::moving;
-    
 }
 
-void cJelly::loadInfo()
-{
-    // OK so based on the colour and the type,
-    // load the appropriate entityInfo
-    
-    std::string     id;
-    
-    if ( mColour == EntColour::random )
-    {
-        mColour = static_cast<EntColour>(rand() % 5 + 1);
-    }
-    
-    switch (mColour) {
-        case EntColour::blue:   id = "blueJelly";   break;
-        case EntColour::green:  id = "greenJelly";  break;
-        case EntColour::purple: id = "purpleJelly"; break;
-        case EntColour::red:    id = "redJelly";    break;
-        case EntColour::yellow: id = "yellowJelly"; break;
-        default: break;
-    }
-    
-    const cEntityInfo& info = rEngine.mEntityHolder.get(id);
-    
-    // Load our own animations, so we don't have to go through the engine
-    // every time we need a new anim phase
-    
-    // For instance, info.mAnimations[0] is likely to be named "idle",
-    // and contain all the parameters for the idle animation
-    
-    for ( const auto& i : info.mAnimations )
-    {
-        cAnimation anim = rEngine.mAnimationHolder.get(i);
-        mAnims[anim.mName] = anim;
-    }
-    
-    // Locate texture; set "idle" as basic anim, set anim
-    // phase counter to 0
-    
-    mSprite.setTexture(rEngine.mTextureHolder.get(info.mTexID));
-    mSprite.setTextureRect(mAnims["idle"].mFirstPhaseRect);
-    pCurrentAnim = &mAnims["idle"];
-    mSprite.setScale(gkCellPixSizeX / static_cast<float>(pCurrentAnim->mFirstPhaseRect.width),
-                     gkCellPixSizeY / static_cast<float>(pCurrentAnim->mFirstPhaseRect.height));
-    mAnimStepCounter = 0;
-    mCurrentAnimSteps = pCurrentAnim->mSteps;
-}
-
-void cJelly::update(float dt)
+void cEntity::update(float dt)
 {
     mTimeAccumulated += dt;
     
@@ -113,6 +90,7 @@ void cJelly::update(float dt)
     // For now, for diagnostic reasons, change the original:
     // if ( mCurrentAnimSteps > 1 )
     // to:
+    
     if ( mCurrentAnimSteps )
     {
         if ( mTimeAccumulated >= pCurrentAnim->mStepTimeInMs )
@@ -133,29 +111,60 @@ void cJelly::update(float dt)
             mSprite.setTextureRect(itmp);
         }
     }
-    
-    
 }
 
 void cJelly::switchColour(EntColour c)
 {
     mColour = c;
-    loadInfo();
-    
+    if ( c == EntColour::random ) { c = static_cast<EntColour>(rand() % 5 + 1); }
+    std::string id;
+    switch ( c ) {
+        case EntColour::red:        id = "redJelly"; break;
+        case EntColour::green:      id = "greenJelly"; break;
+        case EntColour::yellow:     id = "yellowJelly"; break;
+        case EntColour::blue:       id = "blueJelly"; break;
+        case EntColour::purple:     id = "purpleJelly"; break;
+        default: break;
+    }
+    loadInfo(id);
 }
 
-cJelly::cJelly(cEngine& engine, EntColour c):
-cEntity { engine }
+cJelly::cJelly(cEngine& engine, const std::string& id):
+cEntity { engine, id }
 {
-    mColour = c;
     mSpeed = gkJellySpeed;
-    loadInfo();
-    mSpeed = gkJellySpeed;
-    mType = EntType::jelly;
+}
+
+void cJelly::makeSuper(Direction dir)
+{
+    mSuper = true;
+    if ( dir == Direction::undecided )
+    {
+        dir = rand() % 2 == 0 ? Direction::horizontal : Direction::vertical;
+    }
+    
+    mDir = dir;
+
+    pSuperAnim = &mAnims["super"];
+    mSuperTimeAccumulated = 0.f;
+    mSuperAnimStepCounter = 0;
+    mSuperAnimSteps = pSuperAnim->mSteps;
+
+    mSuperSprite.setTexture(rEngine.mTextureHolder.get("assets"));
+    mSuperSprite.setTextureRect(pSuperAnim->mFirstPhaseRect);
+    mSuperSprite.setScale( gkCellPixSizeX / pSuperAnim->mFirstPhaseRect.width,
+                           gkCellPixSizeY / pSuperAnim->mFirstPhaseRect.height );
+
+    
 }
 
 void cJelly::render(sf::RenderWindow& window)
 {
+    if ( mSuper )
+    {
+        mSuperSprite.setPosition(mPos);
+        window.draw(mSuperSprite);
+    }
     mSprite.setPosition(mPos);
     window.draw(mSprite);
 }

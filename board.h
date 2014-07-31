@@ -17,12 +17,13 @@ public:
     bool                closed(int x, int y) const;
     void                init();
     short               at(int x, int y) const;
+    bool                empty(int x, int y) const;
     void                set(int x, int y, unsigned short value);
     void                clear();
     void                reCreate(int x, int y, int bottom, int top);
     
     cEntity*            piece(int x, int y) const;
-    void                place(int x, int y, EntType t, EntColour c = EntColour::random);
+    void                place(int x, int y, EntType t, EntColour c = EntColour::random, bool super = false);
     bool                clickable(int x, int y) const;
     short               neighbourCount(int x, int y) const;
     void                makeTriplet(int x, int y);
@@ -37,9 +38,9 @@ public:
 
 private:
     template<class T>
-    std::unique_ptr<T>    spawn(EntColour colour)
+    std::unique_ptr<T>    spawn(const std::string& id)
     {
-        std::unique_ptr<T> ptr { new T(rEngine, colour) };
+        std::unique_ptr<T> ptr { new T(rEngine, id) };
         return std::move(ptr);
     }
     void                keepTheBooks(int, int);

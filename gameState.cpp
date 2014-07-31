@@ -23,7 +23,7 @@ void cGameState::fillLevel()
     for ( int i = 0; i < mSizeX; ++i )
         for ( int j = mTop; j < mSizeY; ++j )
         {
-            if ( mBoard.at(i,j) == 0 )                  // empty
+            if ( mBoard.empty(i,j) )                  // empty
             {
                 mBoard.place(i, j, EntType::jelly);     // default: random colour
             }
@@ -430,7 +430,7 @@ void cGameState::hilight(sf::Vector2i v)
             {
                 prepareHilight(tmpv);
                 mToBlowUp.push_back(tmpv);
-                if ( mBoard.piece(x, v.y)->mType == EntType::superJelly )
+                if ( mBoard.piece(x, v.y)->mSuper )
                 {
                     hilight(tmpv);
                 }
@@ -446,7 +446,7 @@ void cGameState::hilight(sf::Vector2i v)
             {
                 prepareHilight(tmpv);
                 mToBlowUp.push_back(tmpv);
-                if ( mBoard.piece(v.x, y)->mType == EntType::superJelly )
+                if ( mBoard.piece(v.x, y)->mSuper )
                     hilight(tmpv);
             }
         }
@@ -466,7 +466,7 @@ void cGameState::predictOutcome()
             prepareHilight(i);
             mToBlowUp.push_back(i);
             
-            if ( mBoard.piece(i.x, i.y)->mType == EntType::superJelly )
+            if ( mBoard.piece(i.x, i.y)->mSuper )
             {
                 hilight(i);     // Will recursively hilight everything
             }
@@ -535,17 +535,17 @@ bool cGameState::fallTo(int p, int q, int x, int y, bool vertOnly)
 
     if ( mBoard.fallible(p,q) && mBoard.piece(p,q)->mState != EntState::moving )
     {
-        if ( mBoard.at(x,y) == 0 )
+        if ( mBoard.empty(x,y) )
         {
             mBoard.executeFall(p, q, x, y);
             return true;
         }
-        if ( !vertOnly && x > 0 && mBoard.at(x-1, y) == 0 )
+        if ( !vertOnly && x > 0 && mBoard.empty(x-1, y) )
         {
             mBoard.executeFall(p, q, x-1, y);
             return true;
         }
-        if ( !vertOnly && x < mSizeX-1 && mBoard.at(x+1, y) == 0 )
+        if ( !vertOnly && x < mSizeX-1 && mBoard.empty(x+1, y) )
         {
             mBoard.executeFall(p, q, x+1, y);
             return true;

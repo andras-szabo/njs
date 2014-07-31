@@ -72,6 +72,12 @@ short cBoard::at(int x, int y) const
     return !valid(x,y) ? -1 : mCell[x][y];
 }
 
+// Empty: if 0, or 64 (64 marking an empty grey slime field)
+bool cBoard::empty(int x, int y) const
+{
+    return valid(x,y) && ( mCell[x][y] == 0 || mCell[x][y] == 64 );
+}
+
 bool cBoard::closed(int x, int y) const
 {
     return at(x, y) == -1;
@@ -104,22 +110,22 @@ void cBoard::keepTheBooks(int x, int y)
         {
             auto t = mPieces[x][y]->mType;
             switch ( t ) {
-                case EntType::jelly:    tmp = static_cast<short>(mPieces[x][y]->mColour); break;
+                case EntType::jelly:
+                {
+                    tmp = static_cast<short>(mPieces[x][y]->mColour);
+                    if ( mPieces[x][y]->mSuper )
+                    {
+                        tmp |= 32;      // set the i bit
+                    }
+                    if ( mPieces[x][y]->mLives > 1 )
+                    {
+                        tmp |= 64;      // set the "stuck" bit
+                    }
+                    break;
+                }
                 case EntType::diamond:      tmp = 6;    break;
                 case EntType::block:        tmp = 7;    break;
                 case EntType::guard:        tmp = 8;    break;
-                case EntType::superJelly:
-                {
-                    tmp = static_cast<short>(mPieces[x][y]->mColour);
-                    tmp |= 32;      // set the "superjelly!" bit
-                    break;
-                }
-                case EntType::stuckJelly:
-                {
-                    tmp = static_cast<short>(mPieces[x][y]->mColour);
-                    tmp |= 64;      // set the "stuck jelly!" bit
-                    break;
-                }
             }
         }
         
@@ -168,10 +174,7 @@ bool cBoard::fallible(int x, int y) const
     
     EntType t = mPieces[x][y]->mType;
         
-    return  t == EntType::jelly ||
-            t == EntType::superJelly ||
-            t == EntType::stuckJelly ||
-            t == EntType::diamond;
+    return  t == EntType::jelly || t == EntType::diamond;
 }
 
 short cBoard::neighbourCount(int x, int y) const
@@ -249,34 +252,41 @@ void cBoard::remove(int x, int y)
     keepTheBooks(x, y);
 }
 
-void cBoard::place(int x, int y, EntType t, EntColour c)
+void cBoard::place(int x, int y, EntType t, EntColour c, bool super)
 {
     if ( !valid(x, y) ) return;
     
     // If something already here: kill it, and replace it
     // with new entity.
     
-    if ( mCell[x][y] != 0 )
+    if ( !empty(x, y) )
     {
         remove(x,y);
     }
     
     switch ( t ) {
         case EntType::jelly: {
-            std::unique_ptr<cJelly> ptr = spawn<cJelly> ( c );
+            if ( c == EntColour::random ) { c = static_cast<EntColour>(rand() % 5 + 1 ); }
+            std::string id;
+            switch ( c ) {
+                case EntColour::red:    id = "redJelly"; break;
+                case EntColour::blue:   id = "blueJelly"; break;
+                case EntColour::green:  id = "greenJelly"; break;
+                case EntColour::yellow: id = "yellowJelly"; break;
+                case EntColour::purple: id = "purpleJelly"; break;
+                default: break;
+            }
+            std::unique_ptr<cJelly> ptr = spawn<cJelly> ( id );
+            
             ptr->setPos(gkScrLeft + x * gkCellPixSizeX,
                         gkScrTop + (y - mTop) * gkCellPixSizeY);
+            
+            if ( super ) ptr->makeSuper();
+            
             mPieces[x][y] = std::move(ptr);
             keepTheBooks(x, y);
             break;
         }
-        /*case EntType::superJelly: {
-            std::unique_ptr<cSuperJelly> ptr = spawn<cSuperJelly>(c);
-            mCell[x][y] |= static_cast<short>(c);
-            mCell[x][y] |= 32;
-            mPieces[x][y] = std::move(ptr);
-            break;
-        }*/
         default:
             break;
     }

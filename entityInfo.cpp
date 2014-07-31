@@ -12,9 +12,20 @@ bool cEntityInfo::loadFromFile(const std::string &file)
     
     mType = static_cast<EntType>(tmp);
     
+    std::string stmp;
+    
+    inFile >> stmp;
+    
+    if ( stmp == "red" ) mColour = EntColour::red;
+    if ( stmp == "green" ) mColour = EntColour::green;
+    if ( stmp == "blue" ) mColour = EntColour::blue;
+    if ( stmp == "yellow" ) mColour = EntColour::yellow;
+    if ( stmp == "purple" ) mColour = EntColour::purple;
+    if ( stmp == "random" ) mColour = EntColour::random;        // random is also the colour
+                                                                // of colourless entities (e.g. guards)
     inFile >> mTexID;
     
-    std::string stmp;
+
     inFile >> stmp;
     if ( stmp != "ANIMATIONS" )
     {

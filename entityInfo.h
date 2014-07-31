@@ -7,6 +7,7 @@ struct cEntityInfo {
     bool    loadFromFile(const std::string& file);
     
     EntType                     mType;
+    EntColour                   mColour;
     std::string                 mName;
     std::string                 mTexID;
     int                         mAnimCount;
