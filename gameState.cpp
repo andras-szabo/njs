@@ -287,10 +287,28 @@ sf::Vector2i cGameState::screenToBoardTranslate(sf::Vector2i v)
     v.y *= ( gkViewSize.y / gkWindowSize.y );
     
     // Then translate between screen and board coords
+    // However, let's add a bit of leeway - only the centre
+    // of tiles should be clickable. How do we know? It depends
+    // on how far we are from the edge of tiles =>
+    // let's use %. If we're too far from the centre, we return
+    // negative coordinates.
+    
+    v.x -= gkScrLeft;
+    v.y -= gkScrTop;
+    
     
     sf::Vector2i ret;
-    ret.x = (v.x - gkScrLeft) / gkCellPixSizeX;
-    ret.y = (v.y - gkScrTop ) / gkCellPixSizeY + mTop;
+    ret.x = v.x / gkCellPixSizeX;
+    ret.y = v.y / gkCellPixSizeY + mTop;
+    
+    auto m = static_cast<int>(v.x) % static_cast<int>(gkCellPixSizeX);
+    
+    if ( m < gkSideLeeway || m > gkCellPixSizeX - gkSideLeeway ) ret.x *= -1;
+
+    m = static_cast<int>(v.y) % static_cast<int>(gkCellPixSizeY);
+
+    if ( m < gkSideLeeway || m > gkCellPixSizeX - gkSideLeeway ) ret.y *= -1;
+    
     return ret;
 }
 
@@ -712,15 +730,18 @@ void cGameState::proceedWithFalling()
         }
     }
 
-    for ( int i = 0; i < mSizeX; ++i )
+    if ( mFell == false )
     {
-        for ( int j = mBottom - 1; j >= mTop-1; --j )
+        for ( int i = 0; i < mSizeX; ++i )
         {
-            bool well = fallTo(i, j, i, j+1, false);    // now try sideways too
-            mFell = well || mFell;
+            for ( int j = mBottom - 1; j >= mTop-1; --j )
+            {
+                bool well = fallTo(i, j, i, j+1, false);    // now try sideways too
+                mFell = well || mFell;
+            }
         }
     }
-    
+
 }
 
 // run() is called once every frame.
