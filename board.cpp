@@ -75,7 +75,7 @@ short cBoard::at(int x, int y) const
 // Empty: if 0, or 64 (64 marking an empty grey slime field)
 bool cBoard::empty(int x, int y) const
 {
-    return valid(x,y) && ( mCell[x][y] == 0 || mCell[x][y] == 64 );
+    return valid(x,y) && ( mCell[x][y] == 0 || mCell[x][y] == gkSlimeBit );
 }
 
 bool cBoard::closed(int x, int y) const
@@ -115,11 +115,11 @@ void cBoard::keepTheBooks(int x, int y)
                     tmp = static_cast<short>(mPieces[x][y]->mColour);
                     if ( mPieces[x][y]->mSuper )
                     {
-                        tmp |= 32;      // set the i bit
+                        tmp |= gkSuperBit;      // set the superjelly bit
                     }
                     if ( mPieces[x][y]->mLives > 1 )
                     {
-                        tmp |= 64;      // set the "stuck" bit
+                        tmp |= gkStuckBit;      // set the "stuck" bit
                     }
                     break;
                 }
@@ -130,7 +130,7 @@ void cBoard::keepTheBooks(int x, int y)
         }
         
         // Consider the "slime bit"
-        short slimeBit = mCell[x][y] ^ (255-128);
+        short slimeBit = mCell[x][y] ^ (255-gkSlimeBit);
         tmp |= slimeBit;
         mCell[x][y] = tmp;
     }
@@ -168,9 +168,15 @@ short cBoard::colourAt(sf::Vector2i v) const
     return static_cast<short>(mPieces[v.x][v.y]->mColour);
 }
 
+bool cBoard::slime(int x, int y) const
+{
+    // Check if valid, and whether the "slime bit" is one
+    return valid(x, y) && mCell[x][y] ^ static_cast<short>(255-gkSlimeBit);
+}
+
 bool cBoard::fallible(int x, int y) const
 {
-    if ( !valid(x, y) || mCell[x][y] == 0 ) return false;
+    if ( !valid(x, y) || empty(x,y) ) return false;
     
     EntType t = mPieces[x][y]->mType;
         

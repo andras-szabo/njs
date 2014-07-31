@@ -35,6 +35,7 @@ public:
     void                remove(int x, int y);
     bool                fallible(int x, int y) const;
     void                executeFall(int, int, int, int);
+    bool                slime(int x, int y) const;
 
 private:
     template<class T>

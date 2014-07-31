@@ -136,7 +136,8 @@ void cGameState::loadLevel(const std::string& sLevel)
         }
         else if ( stmp == "SLIME" )
         {
-            mBoard.set(xtmp, ytmp, 16);     // 00010000  -> slime bit
+            mBoard.set(xtmp, ytmp, gkSlimeBit);
+            ++mSlimeCount;
         }
         else if ( stmp == "GUARD" )
         {
@@ -214,7 +215,10 @@ void cGameState::setUpGraphics()
             {
                 texcoords = gkClosedBkgTexCoords;
             }
-            else
+            else if ( mBoard.slime(i,j) )
+            {
+                texcoords = gkSlimeTexCoords;
+            } else
             {
                 texcoords = ( i + j ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
             }
@@ -466,37 +470,36 @@ void cGameState::hilight(sf::Vector2i v, bool lastOne)
     {
         mLastSuperDirection = mFirstSuperDirection;
     }
+    
     sf::Vector2i tmpv = v;
+    int stepx { 0 }, stepy { 0 };
     
     if ( mLastSuperDirection == Direction::horizontal )
     {
-        for ( int x = 0; x < mSizeX; ++x )
+        stepx = 1;
+    } else
+    {
+        stepy = 1;
+    }
+    
+    auto bounds = [&](int x, int y) { return x >= 0 && x < mSizeX && y >= mTop && y <= mBottom; };
+    
+    while ( bounds(v.x + stepx, v.y + stepy) || bounds(v.x-stepx, v.y-stepy) )
+    {
+        for ( int i = 1; i > -2;  i -= 2)
         {
-            tmpv.x = x;
-            if ( x != v.x && mBoard.canBlowUp(tmpv) ) // canBlowUp checks if it's already marked, too
+            tmpv.x = v.x + (stepx * i);   tmpv.y = v.y + (stepy * i);
+            if ( mBoard.canBlowUp(tmpv) )
             {
                 prepareHilight(tmpv);
                 mToBlowUp.push_back(tmpv);
-                if ( mBoard.piece(x, v.y)->mSuper )
+                if ( mBoard.piece(tmpv.x, tmpv.y)->mSuper )
                 {
                     hilight(tmpv);
                 }
             }
         }
-    }
-    else
-    {
-        for ( int y = mTop; y <= mBottom; ++y )
-        {
-            tmpv.y = y;
-            if ( y != v.y && mBoard.canBlowUp(tmpv) ) // canBlowUp checks if it's already marked, too
-            {
-                prepareHilight(tmpv);
-                mToBlowUp.push_back(tmpv);
-                if ( mBoard.piece(v.x, y)->mSuper )
-                    hilight(tmpv);
-            }
-        }
+        if ( stepx >= 1 ) ++stepx; else ++stepy;
     }
     
 }
@@ -555,6 +558,21 @@ void cGameState::removeAndCheck()
             if ( mBoard.piece(i,j) != nullptr && mBoard.piece(i,j)->mState == EntState::dead )
             {
                 mBoard.remove(i,j);
+                
+                // Also remove slime, and reset appropriate coords of the vertexarray
+                if ( mBoard.slime(i,j) )
+                {
+                    --mSlimeCount;
+                    mBoard.set(i, j, 0);
+                    auto p = i * 4 + j * 4 * mSizeX;
+                    auto texcoords = ( i + j ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
+                    
+                    pBoardVA[p].texCoords   = texcoords;
+                    pBoardVA[p+1].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, 0 };
+                    pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
+                    pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
+                }
+                
                 mToExplode--;
             }
         }

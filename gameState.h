@@ -63,6 +63,8 @@ private:
     Direction           mFirstSuperDirection { Direction::undecided };
 
     bool                mFell { false };
+    
+    int                 mSlimeCount { 0 };
    
     std::vector<sf::Vector2i>               mTouchedFields;
     std::vector<sf::Vector2i>               mToBlowUp;
