@@ -14,7 +14,7 @@ public:
         tLives.setFont(rEngine.mFontHolder.get(FontID::defaultFont));
         tLives.setCharacterSize(18);
         tLives.setColor(sf::Color::Cyan);
-        mSpeed = 500.f;
+        mSpeed = 600.f;
     }
     
     void            setPos(float x, float y) { mPos.x = x; mPos.y = y; }

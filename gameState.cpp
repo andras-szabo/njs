@@ -668,7 +668,12 @@ void cGameState::proceedWithExplosions(sf::Time dt)
             mAccumulatedTime = sf::Time::Zero;
             auto x = (*itExplode).x;
             auto y = (*itExplode).y;
-            if ( mBoard.guard(x, y) ) --mGuardCount;
+            if ( mBoard.guard(x, y) )
+            {
+                --mGuardCount;
+                mGuardKilled = true;
+                mGuards.erase(std::find(mGuards.begin(), mGuards.end(), sf::Vector2i(x, y)));
+            }
             mBoard.piece(x, y)->explode(mToBlowUp.size());
             
             // Now check if there's a guard nearby, and if so,
