@@ -2,6 +2,16 @@
 #include <fstream>
 #include <cmath>
 
+// Helper function
+template <class C, class V>
+bool contains(C container, V value)
+{
+    return std::find(container.begin(),
+                     container.end(),
+                     value) != container.end();
+}
+
+
 // Upon construction, the level to be loaded
 // is stored by rEngine.mStrParam
 cGameState::cGameState(cEngine& engine):
@@ -48,7 +58,8 @@ mState { GameState::waiting }
         ptr->makeSuper();
     }
 
-    
+    // Diamond diagnostics
+    mBoard.place(3,1, EntType::diamond);
 }
 
 // Fills level up with random jellies. This is not to be confused
@@ -334,12 +345,13 @@ bool cGameState::adjacent(sf::Vector2i a, sf::Vector2i b)
 
 void cGameState::makeGuardMove()
 {
-    if ( mGuardKilled || mGuardCount == 0 ) return;
+    if ( mGuardKilled || mGuardCount <= 0 ) return;
     auto mover = rand() % mGuardCount;
+    
     int x = mGuards[mover].x;
     int y = mGuards[mover].y;
     bool found = false;
-    
+
     // Pick an adjacent one to the left, right, or top
     // (but not bottom!), which is a normal, non-super,
     // non-stuck jelly
@@ -643,12 +655,13 @@ void cGameState::proceedWithExplosions(sf::Time dt)
             mAccumulatedTime = sf::Time::Zero;
             auto x = (*itExplode).x;
             auto y = (*itExplode).y;
+            if ( mBoard.guard(x, y) ) --mGuardCount;
             mBoard.piece(x, y)->explode(mToBlowUp.size());
             
             // Now check if there's a guard nearby, and if so,
             // make that explode as well.
-            
-            if (std::find(mTouchedFields.begin(), mTouchedFields.end(), sf::Vector2i(x, y)) != mTouchedFields.end() )
+ 
+            if ( contains(mTouchedFields, sf::Vector2i(x, y)) )
             {
                 for ( int i = -1; i < 2; ++i )
                     for ( int j = -1; j < 2; ++j )
@@ -658,11 +671,9 @@ void cGameState::proceedWithExplosions(sf::Time dt)
                                                         // diagonally; also: only blow up
                                                         // those who haven't been already blown up
                         {
-                            if ( mBoard.guard(x+i, y+j) &&  std::find(mToBlowUp.begin(),
-                                                                 mToBlowUp.end(),
-                                                                 sf::Vector2i(x+i, y+j)) == mToBlowUp.end()
-                                && std::find(mGuards.begin(), mGuards.end(), sf::Vector2i(x+i, y+j)) !=
-                                             mGuards.end() )
+                            if ( mBoard.guard(x+i, y+j)
+                                && !contains(mToBlowUp, sf::Vector2i(x+i, y+j))
+                                && contains(mGuards, sf::Vector2i(x+i, y+j)) )
                             {
                                 mBoard.piece(x+i, y+j)->explode();
                                 mGuardKilled = true;
@@ -808,16 +819,31 @@ void cGameState::proceedWithFalling()
 {
     if ( !mFell )
     {
-        // Falling is over - it's impossible to fall any more
-        // So: clear above-the-top line, and go on to aftermath.
+        // Falling is over - it's impossible to fall any more => check
+        // if diamonds have reached the bottom, in which case
+        // remove them &c
         for ( int x = 0; x < mSizeX; ++x )
         {
-            if ( mBoard.clickable(x, mTop-1) )
+            if ( mBoard.diamond(x, mBottom) )
             {
-                mBoard.remove(x, mTop-1);
+                mFell = true;
+                ++mFallenDiamonds;
+                mBoard.remove(x, mBottom);
             }
         }
-        switchToState(GameState::aftermath);
+        
+        // So: clear above-the-top line, and go on to aftermath - if no diamonds fell.
+        if ( !mFell )
+        {
+            for ( int x = 0; x < mSizeX; ++x )
+            {
+                if ( mBoard.clickable(x, mTop-1) )
+                {
+                    mBoard.remove(x, mTop-1);
+                }
+            }
+            switchToState(GameState::aftermath);
+        }
     }
     
     bool proceed { true };

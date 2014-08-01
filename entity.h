@@ -80,10 +80,11 @@ protected:
 class cGuard: public cEntity {
 public:
     cGuard(cEngine& engine, const std::string& id);
-    
 };
 
 class cDiamond : public cEntity {
+public:
+    cDiamond(cEngine& engine, const std::string& id);
     
 };
 

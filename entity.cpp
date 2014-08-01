@@ -84,7 +84,7 @@ void cEntity::update(float dt)
         {
             mPos = mGoal;
             mNeedToMove = false;
-            mState = EntState::normal;
+            mState = mLives > 0 ? EntState::normal : EntState::explOver;
             mVel.x = 0; mVel.y = 0;
         }
         else
@@ -177,6 +177,12 @@ cGuard::cGuard(cEngine& engine, const std::string& id):
 cEntity { engine, id }
 {
     mSpeed = gkGuardSpeed;
+}
+
+cDiamond::cDiamond(cEngine& engine, const std::string& id):
+cEntity { engine, id }
+{
+    mSpeed = gkDiamondSpeed;
 }
 
 void cJelly::makeSuper(Direction dir)

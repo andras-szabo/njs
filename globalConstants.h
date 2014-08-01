@@ -60,6 +60,7 @@ const sf::Vector2f              gkLightBkgTexCoords { 0, 0 };
 const sf::Vector2f              gkDarkBkgTexCoords { 89, 0 };
 const sf::Vector2f              gkSlimeTexCoords { 445, 0 };
 const float                     gkScrollSpeed { 200 };
+const float                     gkDiamondSpeed { 400 };
 const float                     gkGuardSpeed { 300 };
 const float                     gkJellySpeed { 400 };               // e.g. when zigzagging
 const float                     gkNearEnough { 30 };

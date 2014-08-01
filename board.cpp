@@ -183,6 +183,11 @@ bool cBoard::slime(int x, int y) const
     return valid(x, y) && (mCell[x][y] & gkSlimeBit);
 }
 
+bool cBoard::diamond(int x, int y) const
+{
+    return valid(x, y) && !empty(x, y) && mPieces[x][y]->mType == EntType::diamond;
+}
+
 bool cBoard::fallible(int x, int y) const
 {
     if ( !valid(x, y) || empty(x,y) ) return false;
@@ -301,6 +306,14 @@ void cBoard::place(int x, int y, EntType t, EntColour c, bool super)
         }
         case EntType::guard: {
             std::unique_ptr<cGuard> ptr = spawn<cGuard> ("guard");
+            ptr->setPos(gkScrLeft + x * gkCellPixSizeX,
+                        gkScrTop + (y - mTop) * gkCellPixSizeY);
+            mPieces[x][y] = std::move(ptr);
+            keepTheBooks(x, y);
+            break;
+        }
+        case EntType::diamond: {
+            std::unique_ptr<cDiamond> ptr = spawn<cDiamond> ("diamond");
             ptr->setPos(gkScrLeft + x * gkCellPixSizeX,
                         gkScrTop + (y - mTop) * gkCellPixSizeY);
             mPieces[x][y] = std::move(ptr);

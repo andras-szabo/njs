@@ -66,7 +66,8 @@ private:
 
     bool                mFell { false };
     bool                mGuardKilled { false };
-   
+  
+    int                 mFallenDiamonds { 0 };
     int                 mGuardCount { 0 };
     int                 mSlimeCount { 0 };
    
