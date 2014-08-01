@@ -166,6 +166,12 @@ short cBoard::colourAt(sf::Vector2i v) const
     return static_cast<short>(mPieces[v.x][v.y]->mColour);
 }
 
+bool cBoard::normal(int x, int y) const
+{
+    return valid(x, y) && !empty(x, y) && mPieces[x][y]->mType == EntType::jelly && !mPieces[x][y]->mSuper
+    && mPieces[x][y]->mLives == 1;
+}
+
 bool cBoard::guard(int x, int y) const
 {
     return valid(x,y) && !empty(x,y) && mPieces[x][y]->mType == EntType::guard;

@@ -37,6 +37,7 @@ public:
     void                executeFall(int, int, int, int);
     bool                slime(int x, int y) const;
     bool                guard(int x, int y) const;
+    bool                normal(int x, int y) const;
 
 private:
     template<class T>

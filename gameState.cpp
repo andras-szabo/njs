@@ -160,6 +160,8 @@ void cGameState::loadLevel(const std::string& sLevel)
         else if ( stmp == "GUARD" )
         {
             mBoard.place(xtmp, ytmp, EntType::guard);
+            ++mGuardCount;
+            mGuards.push_back(sf::Vector2i(xtmp, ytmp));
         }
         else if ( stmp == "BLOCK" )
         {
@@ -330,6 +332,39 @@ bool cGameState::adjacent(sf::Vector2i a, sf::Vector2i b)
     return abs(a.x - b.x) <= 1 && abs(a.y - b.y) <= 1;
 }
 
+void cGameState::makeGuardMove()
+{
+    if ( mGuardKilled || mGuardCount == 0 ) return;
+    auto mover = rand() % mGuardCount;
+    int x = mGuards[mover].x;
+    int y = mGuards[mover].y;
+    bool found = false;
+    
+    // Pick an adjacent one to the left, right, or top
+    // (but not bottom!), which is a normal, non-super,
+    // non-stuck jelly
+    
+    for ( int i = -1; i < 2; ++i )
+        for ( int j = -1; j < 2; ++j )
+            if ( !found && ((i && !j) || (i == 0 && j == -1 )) )
+            {
+                if ( mBoard.normal(x+i, y+j) )
+                {
+                    found = true;
+                    mBoard.remove(x+i, y+j);
+                    mBoard.place(x+i, y+j, EntType::guard);
+                    mBoard.piece(x+i, y+j)->setPos(gkScrLeft + x * gkCellPixSizeX,
+                                                   gkScrTop + (y - mTop) * gkCellPixSizeY);
+                    mBoard.piece(x+i, y+j)->setGoal(gkScrLeft + (x+i) * gkCellPixSizeX,
+                                                    gkScrTop + (y + j - mTop) * gkCellPixSizeY);
+                    mGuards.push_back(sf::Vector2i(x+i, y+j));
+                    ++mGuardCount;
+                    break;
+                }
+            }
+    
+}
+
 void cGameState::switchToState(GameState s)
 {
     mState = s;
@@ -340,7 +375,7 @@ void cGameState::switchToState(GameState s)
         {
             
             // Then set about making things explode in a timely manner
-            
+            mGuardKilled = false;
             itExplode = mToBlowUp.begin();
             mAccumulatedTime = gkExplosionDelay;    // make sure to blow the first up right away
             mToExplode = mToBlowUp.size();
@@ -359,10 +394,18 @@ void cGameState::switchToState(GameState s)
         }
         case GameState::aftermath:
         {
+            // The fall of diamonds will be covered in the refill phase.
+            // Aftermath:
+            // 1.) Pick a guard and issue move command to it
+            // 2.) If stuck ones around, pick a stuck one and issue move command to it.
+            
+            makeGuardMove();
+            // makeStuckMove();
+            
             // Diagnostic! ////////////////////////////////////////////////////////////////////
-            mState = GameState::waiting;
-            mToBlowUp.clear();
-            mTouchedFields.clear();
+            //mState = GameState::waiting;
+            //mToBlowUp.clear();
+            //mTouchedFields.clear();
             break;
         }
         case GameState::waiting:
@@ -407,8 +450,6 @@ void cGameState::processEvents()
                 if ( mTouchedFields.size() > 2 )
                 {
                     switchToState(GameState::executing);
-                    mTouchedFields.clear();
-
                 }
                 else
                 {
@@ -607,20 +648,32 @@ void cGameState::proceedWithExplosions(sf::Time dt)
             // Now check if there's a guard nearby, and if so,
             // make that explode as well.
             
-            for ( int i = -1; i < 2; ++i )
-                for ( int j = -1; j < 2; ++j )
-                {
-                    if ( (i & !j) || (j & !i))          // exactly one of them is 0;
-                                                        // so explosions won't work
-                                                        // diagonally
+            if (std::find(mTouchedFields.begin(), mTouchedFields.end(), sf::Vector2i(x, y)) != mTouchedFields.end() )
+            {
+                for ( int i = -1; i < 2; ++i )
+                    for ( int j = -1; j < 2; ++j )
                     {
-                        if ( mBoard.guard(x+i, y+j) )
+                        if ( (i & !j) || (j & !i))      // exactly one of them is 0;
+                                                        // so explosions won't work
+                                                        // diagonally; also: only blow up
+                                                        // those who haven't been already blown up
                         {
-                            mBoard.piece(x+i, y+j)->explode();
+                            if ( mBoard.guard(x+i, y+j) &&  std::find(mToBlowUp.begin(),
+                                                                 mToBlowUp.end(),
+                                                                 sf::Vector2i(x+i, y+j)) == mToBlowUp.end()
+                                && std::find(mGuards.begin(), mGuards.end(), sf::Vector2i(x+i, y+j)) !=
+                                             mGuards.end() )
+                            {
+                                mBoard.piece(x+i, y+j)->explode();
+                                mGuardKilled = true;
+                                --mGuardCount;
+                                mGuards.erase(std::find(mGuards.begin(), mGuards.end(),
+                                                    sf::Vector2i(x+i, y+j)));
+                                ++mToExplode;
+                            }
                         }
                     }
-                }
-            
+            }
             ++itExplode;
         }
     }
@@ -732,6 +785,24 @@ bool cGameState::fallTo(int p, int q, int x, int y, bool vertOnly)
     return false;
 }
 
+void cGameState::proceedWithMovement()
+{
+    bool over { true };
+    for ( int x = 0; x < mSizeX; ++x )
+    {
+        for ( int y = mTop; y <= mBottom; ++y )
+            if ( mBoard.piece(x,y) != nullptr && mBoard.piece(x,y)->mState == EntState::moving )
+            {
+                over = false;
+                break;
+            }
+        if ( over == false )
+            break;
+    }
+    
+    if ( !over ) return;
+    switchToState(GameState::waiting);
+}
 
 void cGameState::proceedWithFalling()
 {
@@ -812,6 +883,7 @@ void cGameState::run()
             proceedWithFalling();
             break;
         case GameState::aftermath:
+            proceedWithMovement();
             // check if we're finished and can get back to
             // waiting, or there's a stageover
             break;

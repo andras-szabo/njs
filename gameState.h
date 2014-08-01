@@ -35,7 +35,9 @@ private:
     void                removeAndCheck();
     void                refillTop();
     void                proceedWithFalling();
+    void                proceedWithMovement();
     bool                fallTo(int, int, int, int, bool vertOnly = false);
+    void                makeGuardMove();
     
 public:
     std::string         mLevelName;
@@ -63,9 +65,12 @@ private:
     Direction           mFirstSuperDirection { Direction::undecided };
 
     bool                mFell { false };
-    
+    bool                mGuardKilled { false };
+   
+    int                 mGuardCount { 0 };
     int                 mSlimeCount { 0 };
    
+    std::vector<sf::Vector2i>               mGuards;
     std::vector<sf::Vector2i>               mTouchedFields;
     std::vector<sf::Vector2i>               mToBlowUp;
     std::vector<sf::Vector2i>::iterator     itExplode;
