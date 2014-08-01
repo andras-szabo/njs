@@ -9,6 +9,7 @@ struct cEntityInfo {
     EntType                     mType;
     EntColour                   mColour;
     std::string                 mName;
+    bool                        mFallible;
     std::string                 mTexID;
     int                         mAnimCount;
     std::vector<std::string>    mAnimations;

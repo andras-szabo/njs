@@ -28,9 +28,7 @@ void cBoard::init()
         }
         
         mPieces.push_back(std::move(col));
-    }
-    
-    std::cout << "Init done; sizex: " << mSizeX << "; sizey: " << mSizeY << "\n";
+    }    
 }
 
 bool cBoard::marked(sf::Vector2i v) const
@@ -130,7 +128,7 @@ void cBoard::keepTheBooks(int x, int y)
         }
         
         // Consider the "slime bit"
-        short slimeBit = mCell[x][y] ^ (255-gkSlimeBit);
+        short slimeBit = mCell[x][y] & gkSlimeBit;
         tmp |= slimeBit;
         mCell[x][y] = tmp;
     }
@@ -168,19 +166,21 @@ short cBoard::colourAt(sf::Vector2i v) const
     return static_cast<short>(mPieces[v.x][v.y]->mColour);
 }
 
+bool cBoard::guard(int x, int y) const
+{
+    return valid(x,y) && !empty(x,y) && mPieces[x][y]->mType == EntType::guard;
+}
+
 bool cBoard::slime(int x, int y) const
 {
     // Check if valid, and whether the "slime bit" is one
-    return valid(x, y) && mCell[x][y] ^ static_cast<short>(255-gkSlimeBit);
+    return valid(x, y) && (mCell[x][y] & gkSlimeBit);
 }
 
 bool cBoard::fallible(int x, int y) const
 {
     if ( !valid(x, y) || empty(x,y) ) return false;
-    
-    EntType t = mPieces[x][y]->mType;
-        
-    return  t == EntType::jelly || t == EntType::diamond;
+    return mPieces[x][y]->mFallible;
 }
 
 short cBoard::neighbourCount(int x, int y) const
@@ -215,7 +215,7 @@ void cBoard::executeFall(int p, int q, int x, int y)
     mPieces[x][y]->setGoal(gkScrLeft + x * gkCellPixSizeX, gkScrTop + (y - mTop) * gkCellPixSizeY);
 }
 
-void cBoard::set(int x, int y, unsigned short value)
+void cBoard::set(int x, int y, short value)
 {
     if ( valid(x,y) )
     {
@@ -289,6 +289,14 @@ void cBoard::place(int x, int y, EntType t, EntColour c, bool super)
             
             if ( super ) ptr->makeSuper();
             
+            mPieces[x][y] = std::move(ptr);
+            keepTheBooks(x, y);
+            break;
+        }
+        case EntType::guard: {
+            std::unique_ptr<cGuard> ptr = spawn<cGuard> ("guard");
+            ptr->setPos(gkScrLeft + x * gkCellPixSizeX,
+                        gkScrTop + (y - mTop) * gkCellPixSizeY);
             mPieces[x][y] = std::move(ptr);
             keepTheBooks(x, y);
             break;

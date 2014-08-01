@@ -20,8 +20,8 @@ public:
     void            setGoal(float x, float y);
     void            predictDamage(int);
     
-    virtual void    switchColour(EntColour) = 0;
-    virtual void    render(sf::RenderWindow&) = 0;
+    virtual void    switchColour(EntColour);
+    virtual void    render(sf::RenderWindow&);
     virtual void    update(float dt);
     virtual void    explode(int dmg = 1);
     virtual void    switchToAnim(const std::string&);
@@ -32,6 +32,7 @@ protected:
 public:
     EntType                             mType;
     EntColour                           mColour;
+    bool                                mFallible { false };
     EntState                            mState { EntState::normal };
     bool                                mNeedToMove { false };
     Direction                           mDir { Direction::undecided };  // super jelly orientation
@@ -58,7 +59,6 @@ protected:
 class cJelly : public cEntity {
 public:
     cJelly(cEngine& engine, const std::string& id);
-    virtual void        switchColour(EntColour) override;
     virtual void        render(sf::RenderWindow&) override;
     virtual void        update(float dt) override;
     
@@ -78,6 +78,8 @@ protected:
 };
 
 class cGuard: public cEntity {
+public:
+    cGuard(cEngine& engine, const std::string& id);
     
 };
 

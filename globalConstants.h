@@ -48,9 +48,9 @@ const float                     gkIntroProceedSecs { 5.0 };
 const sf::Time                  gkExplosionDelay { sf::seconds(0.1) };
 
 // Significant bits
-const int                       gkSuperBit = 32;
-const int                       gkStuckBit = 64;
-const int                       gkSlimeBit = 128;
+const short int                 gkSuperBit = 32;
+const short int                 gkStuckBit = 64;
+const short int                 gkSlimeBit = 128;
     
 // Graphics constants
 const float                     gkCellPixSizeX { 89 };
@@ -60,6 +60,7 @@ const sf::Vector2f              gkLightBkgTexCoords { 0, 0 };
 const sf::Vector2f              gkDarkBkgTexCoords { 89, 0 };
 const sf::Vector2f              gkSlimeTexCoords { 445, 0 };
 const float                     gkScrollSpeed { 200 };
+const float                     gkGuardSpeed { 300 };
 const float                     gkJellySpeed { 400 };               // e.g. when zigzagging
 const float                     gkNearEnough { 30 };
 const float                     gkScrLeft { (gkViewSize.x - (gkCellPixSizeX * 7)) / 2.f };

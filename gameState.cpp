@@ -29,6 +29,24 @@ mState { GameState::waiting }
     {
         ptr->makeSuper();
     }
+    
+    ptr = dynamic_cast<cJelly*>(mBoard.piece(3,5));
+    if ( ptr != nullptr )
+    {
+        ptr->makeSuper();
+    }
+    
+    ptr = dynamic_cast<cJelly*>(mBoard.piece(2,5));
+    if ( ptr != nullptr )
+    {
+        ptr->makeSuper();
+    }
+    
+    ptr = dynamic_cast<cJelly*>(mBoard.piece(2,4));
+    if ( ptr != nullptr )
+    {
+        ptr->makeSuper();
+    }
 
     
 }
@@ -222,7 +240,8 @@ void cGameState::setUpGraphics()
             else if ( mBoard.slime(i,j) )
             {
                 texcoords = gkSlimeTexCoords;
-            } else
+            }
+            else
             {
                 texcoords = ( i + j ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
             }
@@ -243,7 +262,6 @@ void cGameState::setUpGraphics()
 
 void cGameState::init()
 {
-    std::cout << "init...";
     // Set up the vertexArray of the board
     pBoardVA = new sf::Vertex[ mSizeX * mSizeY * 4 ];
     setUpGraphics();
@@ -255,13 +273,9 @@ void cGameState::render()
     //      - this is simple: render some background texture ( perhaps not even needed ).
     
     // Render board
-    //      - low priority: only draw the actually visible parts of the vertexarray
-    
     rWindow.draw(&pBoardVA[0], mSizeX * mSizeY * 4, sf::Quads, mBoardState);
 
-    // Now remove hilights from everywhere; much refactoring here,
-    // yea, is advised.
-    
+    // Now remove hilights from everywhere
     for ( auto x = 0; x < mSizeX; ++x )
         for ( auto y = mTop; y <= mBottom; ++y )
             removeHilight(sf::Vector2i(x,y));
@@ -302,12 +316,10 @@ sf::Vector2i cGameState::screenToBoardTranslate(sf::Vector2i v)
     ret.y = v.y / gkCellPixSizeY + mTop;
     
     auto m = static_cast<int>(v.x) % static_cast<int>(gkCellPixSizeX);
-    
     if ( m < gkSideLeeway || m > gkCellPixSizeX - gkSideLeeway ) ret.x *= -1;
 
     m = static_cast<int>(v.y) % static_cast<int>(gkCellPixSizeY);
-
-    if ( m < gkSideLeeway || m > gkCellPixSizeX - gkSideLeeway ) ret.y *= -1;
+    if ( m < gkSideLeeway || m > gkCellPixSizeY - gkSideLeeway ) ret.y *= -1;
     
     return ret;
 }
@@ -340,6 +352,7 @@ void cGameState::switchToState(GameState s)
             // to true. (Jellies will try to fall if: they all are in "normal"
             // state, and at least one of them managed to fall in the
             // previous iteration - as marked by mFell.)
+            
             refillTop();
             mFell = true;
             break;
@@ -464,13 +477,15 @@ void cGameState::hilight(sf::Vector2i v, bool lastOne)
 {
     if ( !lastOne )
     {
-        if ( mFirstSuperDirection == Direction::undecided )
-        {
-        mFirstSuperDirection = mBoard.piece(v.x, v.y)->mDir;
-        mLastSuperDirection = mFirstSuperDirection;
-        return;
-    }
-        else
+        if ( mFirstSuperDirection == Direction::undecided )     // This is the first
+        {                                                       // super we touch! Jolly good, early exit.
+            mFirstSuperDirection = mBoard.piece(v.x, v.y)->mDir;
+            mLastSuperDirection = mFirstSuperDirection;
+            return;
+        }
+        else    // This is ont the first super that's touched. The direction of the current one
+                // thus depends on the direction of the previous one (so the direction of touched
+                // supers alternates between horizontal and vertical.
         {
         switch ( mLastSuperDirection ) {
             case Direction::horizontal:
@@ -506,12 +521,18 @@ void cGameState::hilight(sf::Vector2i v, bool lastOne)
     if ( mLastSuperDirection == Direction::horizontal )
     {
         stepx = 1;
-    } else
+    }
+    else
     {
         stepy = 1;
     }
     
     auto bounds = [&](int x, int y) { return x >= 0 && x < mSizeX && y >= mTop && y <= mBottom; };
+    
+    // Starting at the coordinate of the touched item, move away in
+    // the appropriate direction (stepx or stepy), until this is possible
+    // to do in either one of the two possible ways. (E.g. with vertical
+    // highlight: up or down.)
     
     while ( bounds(v.x + stepx, v.y + stepy) || bounds(v.x-stepx, v.y-stepy) )
     {
@@ -544,8 +565,8 @@ void cGameState::predictOutcome()
     {
         if ( !mBoard.marked(i) )                        // not already marked?
         {
-            prepareHilight(i);
-            mToBlowUp.push_back(i);
+            prepareHilight(i);              // mark it, hilight its background
+            mToBlowUp.push_back(i);         // add node to the list of positions to be blown up
             
             if ( mBoard.piece(i.x, i.y)->mSuper )
             {
@@ -553,6 +574,10 @@ void cGameState::predictOutcome()
             }
         }
     }
+    
+    // If mFirstSuperDirection is not undecided, that means that at least
+    // one super was touched, so as the last thing to do, we need to
+    // highlight the consequence of it being touched.
     
     if ( mFirstSuperDirection != Direction::undecided )
     {
@@ -575,7 +600,27 @@ void cGameState::proceedWithExplosions(sf::Time dt)
         if ( mAccumulatedTime >= gkExplosionDelay )
         {
             mAccumulatedTime = sf::Time::Zero;
-            mBoard.piece((*itExplode).x, (*itExplode).y)->explode(mToBlowUp.size());
+            auto x = (*itExplode).x;
+            auto y = (*itExplode).y;
+            mBoard.piece(x, y)->explode(mToBlowUp.size());
+            
+            // Now check if there's a guard nearby, and if so,
+            // make that explode as well.
+            
+            for ( int i = -1; i < 2; ++i )
+                for ( int j = -1; j < 2; ++j )
+                {
+                    if ( (i & !j) || (j & !i))          // exactly one of them is 0;
+                                                        // so explosions won't work
+                                                        // diagonally
+                    {
+                        if ( mBoard.guard(x+i, y+j) )
+                        {
+                            mBoard.piece(x+i, y+j)->explode();
+                        }
+                    }
+                }
+            
             ++itExplode;
         }
     }
@@ -592,10 +637,9 @@ void cGameState::removeAndCheck()
                 --mToExplode;
                 if ( mBoard.piece(i,j)->mLives <= 0 )
                 {
-                    mBoard.remove(i,j);
-                
-                    // Also remove slime, and reset appropriate coords of the vertexarray
-                    if ( mBoard.slime(i,j) )
+                    // If the dead jelly was not a guard, then we have to remove
+                    // the slime, and reset appropriate coords of the vertexarray
+                    if ( mBoard.piece(i,j)->mType == EntType::jelly && mBoard.slime(i,j) )
                     {
                         --mSlimeCount;
                         mBoard.set(i, j, 0);
@@ -607,6 +651,8 @@ void cGameState::removeAndCheck()
                         pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
                         pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
                     }
+                    
+                    mBoard.remove(i,j);
                 }
                 else { mBoard.piece(i,j)->mState = EntState::normal; }
             }
@@ -634,6 +680,12 @@ void cGameState::refillTop()
         mBoard.place(x, mTop-1, EntType::jelly);
     }
 }
+
+// The recursive fall function. If vertOnly is true, then
+// vertical fall is prioritized. To see if a given node
+// can fall, check things below it, and fall there if possible;
+// if not, recursively check the ones below (i.e. whether it'd
+// be possible to fall if the thing below us fell as well).
 
 bool cGameState::fallTo(int p, int q, int x, int y, bool vertOnly)
 {
@@ -686,7 +738,7 @@ void cGameState::proceedWithFalling()
     if ( !mFell )
     {
         // Falling is over - it's impossible to fall any more
-        // So: clear above-the-top line, and go on to aftermath
+        // So: clear above-the-top line, and go on to aftermath.
         for ( int x = 0; x < mSizeX; ++x )
         {
             if ( mBoard.clickable(x, mTop-1) )
@@ -718,30 +770,26 @@ void cGameState::proceedWithFalling()
     // Now iterate through each column from bottom to top, and try to make things
     // fall. fallTo() takes care of the actual falling; and returns true if
     // it was possible to fall.
+    // outerLoop makes sure that we try twice, and that things fall in order:
+    // vertical falls have priority, so things fall straight down until they
+    // can ( outerLoop == 0 => fallTo()'s "vertOnly" parameter is true); then,
+    // if that resulted in no falling, try sideways too (outerLoop == 1 => vertOnly == false).
     
     mFell = false;
     
-    for ( int i = 0; i < mSizeX; ++i )
-    {
-        for ( int j = mBottom - 1; j >= mTop-1; --j )
-        {
-            bool well = fallTo(i, j, i, j+1, true);     // at first: fall "vert only"
-            mFell = well || mFell;
-        }
-    }
-
-    if ( mFell == false )
+    for ( int outerLoop = 0; outerLoop < 2; ++outerLoop )
     {
         for ( int i = 0; i < mSizeX; ++i )
         {
             for ( int j = mBottom - 1; j >= mTop-1; --j )
             {
-                bool well = fallTo(i, j, i, j+1, false);    // now try sideways too
+                bool well = fallTo(i, j, i, j+1, outerLoop == 0);
                 mFell = well || mFell;
             }
         }
+        
+        if ( mFell == true ) break;
     }
-
 }
 
 // run() is called once every frame.
@@ -769,6 +817,7 @@ void cGameState::run()
             break;
     }
    
+    // Update everyone
     for ( int x = 0; x < mSizeX; ++ x )
         for ( int y = mTop; y <= mBottom; ++y )
         {
@@ -778,21 +827,6 @@ void cGameState::run()
     
     /*
      
-     get mouse input events, and handle them;
-        - possibly: call "start executing()", which will switch to "executing move" state
-     
-     if we're in "waiting for move" state:
-        - prepare higlights
-        - prepare "connections" line segments
-     
-     if we're in "executing move" state:
-        -go on emptying the "explosion" queue, if sufficient time has passed;
-         add points on the basis of explosions
-     
-        - check if everyone finished exploding
-        - if so, call "start refill()", which will switch to "refill" state, and add the
-          necessary number of jellies to the board
-     
      if we're in "refill" state:
         - check move logic and see if we have to continue refilling; if not, call
           start aftermath() which will set up the aftermath state - or call "start waiting"
@@ -801,11 +835,8 @@ void cGameState::run()
      if we're in "aftermath" state
         - just continue animating; if everyone finished, call "start waiting", which will put
           us back to start waiting, or call stageover
-     
-     update(animations);
-     
+
      */
-    
 }
 
 void cGameState::cleanup()

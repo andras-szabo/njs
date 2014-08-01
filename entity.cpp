@@ -14,6 +14,8 @@ void cEntity::loadInfo(const std::string& id)
     const cEntityInfo& info = rEngine.mEntityHolder.get(id);
     mType = info.mType;
     mColour = info.mColour;
+    mFallible = info.mFallible;
+    
     // Load animations
     
     for ( const auto& i : info.mAnimations )
@@ -124,6 +126,12 @@ void cEntity::update(float dt)
     }
 }
 
+void cEntity::render(sf::RenderWindow& window)
+{
+    mSprite.setPosition(mPos);
+    window.draw(mSprite);
+}
+
 //Calls regular update; and then, if neccessary,
 // updates superjelly sprite as well
 void cJelly::update(float dt)
@@ -143,7 +151,7 @@ void cJelly::update(float dt)
     }
 }
 
-void cJelly::switchColour(EntColour c)
+void cEntity::switchColour(EntColour c)
 {
     mColour = c;
     if ( c == EntColour::random ) { c = static_cast<EntColour>(rand() % 5 + 1); }
@@ -163,6 +171,12 @@ cJelly::cJelly(cEngine& engine, const std::string& id):
 cEntity { engine, id }
 {
     mSpeed = gkJellySpeed;
+}
+
+cGuard::cGuard(cEngine& engine, const std::string& id):
+cEntity { engine, id }
+{
+    mSpeed = gkGuardSpeed;
 }
 
 void cJelly::makeSuper(Direction dir)

@@ -18,7 +18,7 @@ public:
     void                init();
     short               at(int x, int y) const;
     bool                empty(int x, int y) const;
-    void                set(int x, int y, unsigned short value);
+    void                set(int x, int y, short value);
     void                clear();
     void                reCreate(int x, int y, int bottom, int top);
     
@@ -36,6 +36,7 @@ public:
     bool                fallible(int x, int y) const;
     void                executeFall(int, int, int, int);
     bool                slime(int x, int y) const;
+    bool                guard(int x, int y) const;
 
 private:
     template<class T>
