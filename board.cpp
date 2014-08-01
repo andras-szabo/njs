@@ -78,7 +78,15 @@ bool cBoard::empty(int x, int y) const
 
 bool cBoard::closed(int x, int y) const
 {
-    return at(x, y) == -1;
+    return mCell[x][y] == -1;
+}
+
+void cBoard::moveEveryone(sf::Vector2f v)
+{
+    for ( auto& i : mPieces )
+        for ( auto& p : i )
+            if ( p != nullptr )
+                p->move(v);
 }
 
 bool cBoard::clickable(int x, int y) const
@@ -179,8 +187,11 @@ bool cBoard::guard(int x, int y) const
 
 bool cBoard::slime(int x, int y) const
 {
-    // Check if valid, and whether the "slime bit" is one
-    return valid(x, y) && (mCell[x][y] & gkSlimeBit);
+    // Check whether the slime bit is 1.
+    // Note: this doesn't check for validity, because there
+    // might be times when we need to check as-yet invisible
+    // squares for being slimy too.
+    return mCell[x][y] & gkSlimeBit;
 }
 
 bool cBoard::diamond(int x, int y) const
@@ -228,10 +239,10 @@ void cBoard::executeFall(int p, int q, int x, int y)
 
 void cBoard::set(int x, int y, short value)
 {
-    if ( valid(x,y) )
-    {
+    //if ( valid(x,y) )
+    //{
         mCell[x][y] = value;
-    }
+    //}
 }
 
 void cBoard::clear()
@@ -267,6 +278,25 @@ void cBoard::remove(int x, int y)
 {
     mPieces[x][y].reset(nullptr);
     keepTheBooks(x, y);
+}
+
+int cBoard::getHighestDiamond() const
+{
+    int highest { mBottom };
+    for ( int j = mTop; j < mBottom; ++j )  // here, strict < is enough
+    {
+        for ( int i = 0; i < mSizeX; ++i )
+        {
+            if ( diamond(i, j) )
+            {
+                highest = j;
+                break;
+            }
+        }
+        if ( highest != mBottom)
+            break;
+    }
+    return highest;
 }
 
 void cBoard::place(int x, int y, EntType t, EntColour c, bool super)

@@ -26,7 +26,7 @@ enum class EntState: short int { normal, exploding, moving, explOver };
 enum class Direction : short int { undecided = 0, horizontal = 1, vertical = 2 };
     
 // Game states
-enum class GameState :  unsigned int { waiting, executing, refilling, aftermath };
+enum class GameState :  unsigned int { waiting, executing, refilling, aftermath, scrolling };
 
 // Font and texture IDs
 enum class FontID   :   unsigned int { defaultFont };
@@ -60,7 +60,7 @@ const sf::Vector2f              gkClosedBkgTexCoords { 178, 0 };
 const sf::Vector2f              gkLightBkgTexCoords { 0, 0 };
 const sf::Vector2f              gkDarkBkgTexCoords { 89, 0 };
 const sf::Vector2f              gkSlimeTexCoords { 445, 0 };
-const float                     gkScrollSpeed { 200 };
+const float                     gkScrollSpeed { 50 };
 const float                     gkDiamondSpeed { 500 };
 const float                     gkGuardSpeed { 400 };
 const float                     gkJellySpeed { 500 };               // e.g. when zigzagging

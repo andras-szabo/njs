@@ -18,6 +18,7 @@ public:
     }
     
     void            setPos(float x, float y) { mPos.x = x; mPos.y = y; }
+    void            move(sf::Vector2f v) { mPos += v; }
     void            setGoal(float x, float y);
     void            predictDamage(int);
     

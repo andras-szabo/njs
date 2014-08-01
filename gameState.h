@@ -40,6 +40,8 @@ private:
     void                makeGuardMove();
     void                spawnDoodad();
     void                makeSupers();
+    void                removeGuard(sf::Vector2i);
+    void                scroll(int amount);
     
 public:
     std::string         mLevelName;
@@ -75,6 +77,10 @@ private:
   
     std::vector<cJelly*>                    mPickedForPromotion;
     std::vector<std::unique_ptr<cEntity>>   mDoodads;
+    
+    std::vector<int>                        mSlimes;    // Keeping track of the slime which is
+                                                        // furthest on top, for scrolling purposes
+    std::vector<cEntity*>                   mDiamonds;  // Keeping track on diamonds and their position
     
     std::vector<sf::Vector2i>               mGuards;
     std::vector<sf::Vector2i>               mTouchedFields;

@@ -6,6 +6,11 @@ idle_purple
 idle_guard
 idle_diamond
 idle_doodad
+awake_red
+awake_green
+awake_blue
+awake_yellow
+awake_purple
 explode_red
 explode_green
 explode_blue

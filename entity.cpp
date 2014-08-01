@@ -44,6 +44,8 @@ void cEntity::switchToAnim(const std::string& name)
     mTimeAccumulated = 0.f;
     mAnimStepCounter = 0;
     mCurrentAnimSteps = pCurrentAnim->mSteps;
+    sf::IntRect itmp = pCurrentAnim->mFirstPhaseRect;
+    mSprite.setTextureRect(itmp);
 }
 
 void cEntity::explode(int dmg)

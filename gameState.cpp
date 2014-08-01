@@ -22,7 +22,7 @@ mState { GameState::waiting }
     fillLevel();
 
     // Diamond diagnostics
-    mBoard.place(3,1, EntType::diamond);
+    // mBoard.place(3,1, EntType::diamond);
 }
 
 // Fills level up with random jellies. This is not to be confused
@@ -130,6 +130,7 @@ void cGameState::loadLevel(const std::string& sLevel)
         {
             mBoard.set(xtmp, ytmp, gkSlimeBit);
             ++mSlimeCount;
+            mSlimes.push_back(ytmp);
         }
         else if ( stmp == "GUARD" )
         {
@@ -172,10 +173,22 @@ void cGameState::loadLevel(const std::string& sLevel)
     for ( int i = 0; i < mSizeX; ++i )
         visited.push_back(std::vector<bool>(mSizeY, false));
     
+    // Sort slimes, in case we have any, so that lowest is on top
+    if ( !mSlimes.empty() )
+    {
+        std::sort(mSlimes.begin(), mSlimes.end());
+    }
+    
 }
 
 void cGameState::scrollBoard(float dt)
 {
+    if ( !mNeedToScroll )
+    {
+        switchToState(GameState::refilling);
+        return;
+    }
+    
     sf::Vector2f v { mTargetPos - mBoardPos };
 
     float length = sqrtf(pow(v.x, 2) + pow(v.y, 2));
@@ -184,13 +197,29 @@ void cGameState::scrollBoard(float dt)
     
     mBoardPos += v * gkScrollSpeed * dt;
 
-    if ( length < 0.001 )
+    if ( length < 2 )
     {
         mBoardPos = mTargetPos;
         mNeedToScroll = false;
     }
     
-    mBoardState.transform.translate(mBoardPos);
+    sf::Transform t;
+    t.translate(mBoardPos);
+    mBoardState.transform = t;
+    mBoard.moveEveryone( v * gkScrollSpeed * dt);
+}
+
+void cGameState::scroll(int amount)
+{
+    mNeedToScroll = true;
+    mTargetPos = mBoardPos;
+    mTargetPos.y -= (amount * gkCellPixSizeY);
+    
+    mTop += amount;
+    mBottom += amount;
+    
+    mBoard.mTop += amount;
+    mBoard.mBottom += amount;
 }
 
 void cGameState::setUpGraphics()
@@ -313,6 +342,7 @@ bool cGameState::adjacent(sf::Vector2i a, sf::Vector2i b)
 void cGameState::makeGuardMove()
 {
     if ( mGuardKilled || mGuardCount <= 0 ) return;
+    
     auto mover = rand() % mGuardCount;
     
     int x = mGuards[mover].x;
@@ -401,15 +431,33 @@ void cGameState::switchToState(GameState s)
         }
         case GameState::aftermath:
         {
-            // Aftermath:
-            // 0.) Make supers
-            // 1.) Pick a guard and issue move command to it
-            // 2.) If stuck ones around, pick a stuck one and issue move command to it.
-            
             makeSupers();
             makeGuardMove();
             // makeStuckMove();
-            
+            break;
+        }
+        case GameState::scrolling:
+        {
+            if ( mSlimes.empty() ) switchToState(GameState::waiting);   // no scroll if no slime left
+            else
+            {
+                auto highest = *mSlimes.begin();
+                if ( highest >= mBottom )   // possibly need to scroll
+                {
+                    auto highestDiamond = mBoard.getHighestDiamond();  // will return mBottom if no diamonds
+                    auto scrollAmount = std::min(highest - mBottom + 1, highestDiamond - mTop);
+                    scrollAmount = std::min(scrollAmount, (mSizeY-1) - mBottom);
+                    if ( scrollAmount > 0)
+                    {
+                        scroll(scrollAmount);
+                    }
+                }
+                else
+                {
+                    switchToState(GameState::waiting);
+                }
+                    
+            }
             break;
         }
         case GameState::waiting:
@@ -465,6 +513,10 @@ void cGameState::processEvents()
                 }
                 else
                 {
+                    for ( const auto& i : mTouchedFields )
+                    {
+                        mBoard.piece(i.x, i.y)->switchToAnim("idle");
+                    }
                     mTouchedFields.clear();
                 }
             }
@@ -488,6 +540,7 @@ void cGameState::processEvents()
             if ( mBoard.colourAt(currentPos) == mBoard.colourAt(*mTouchedFields.begin()) &&
                  adjacent(currentPos, *mTouchedFields.rbegin()) )
                 {
+                    mBoard.piece(currentPos.x, currentPos.y)->switchToAnim("awake");
                     mTouchedFields.push_back(currentPos);
                 }
             
@@ -654,6 +707,13 @@ void cGameState::predictOutcome()
         mBoard.piece(i.x, i.y)->predictDamage(mToBlowUp.size());
 }
 
+void cGameState::removeGuard(sf::Vector2i vec)
+{
+    --mGuardCount;
+    mGuardKilled = true;
+    mGuards.erase(std::find(mGuards.begin(), mGuards.end(), vec));
+}
+
 void cGameState::proceedWithExplosions(sf::Time dt)
 {
     // itExplode points to the next item we should blow up
@@ -670,9 +730,7 @@ void cGameState::proceedWithExplosions(sf::Time dt)
             auto y = (*itExplode).y;
             if ( mBoard.guard(x, y) )
             {
-                --mGuardCount;
-                mGuardKilled = true;
-                mGuards.erase(std::find(mGuards.begin(), mGuards.end(), sf::Vector2i(x, y)));
+                removeGuard(sf::Vector2i(x, y));
             }
             mBoard.piece(x, y)->explode(mToBlowUp.size());
             
@@ -694,10 +752,7 @@ void cGameState::proceedWithExplosions(sf::Time dt)
                                 && contains(mGuards, sf::Vector2i(x+i, y+j)) )
                             {
                                 mBoard.piece(x+i, y+j)->explode();
-                                mGuardKilled = true;
-                                --mGuardCount;
-                                mGuards.erase(std::find(mGuards.begin(), mGuards.end(),
-                                                    sf::Vector2i(x+i, y+j)));
+                                removeGuard(sf::Vector2i(x+i, y+j));
                                 ++mToExplode;
                             }
                         }
@@ -723,6 +778,7 @@ void cGameState::removeAndCheck()
                     // the slime, and reset appropriate coords of the vertexarray
                     if ( mBoard.piece(i,j)->mType == EntType::jelly && mBoard.slime(i,j) )
                     {
+                        mSlimes.erase(std::find(mSlimes.begin(), mSlimes.end(), j));
                         --mSlimeCount;
                         mBoard.set(i, j, 0);
                         auto p = i * 4 + j * 4 * mSizeX;
@@ -836,7 +892,15 @@ void cGameState::proceedWithMovement()
     }
     
     if ( !over ) return;
-    switchToState(GameState::waiting);
+    
+    if ( mState == GameState::aftermath )
+    {
+        switchToState(GameState::scrolling);
+    }
+    else
+    {
+        switchToState(GameState::waiting);
+    }
 }
 
 void cGameState::proceedWithFalling()
@@ -935,6 +999,9 @@ void cGameState::run()
         case GameState::aftermath:
             proceedWithMovement();
             break;
+        case GameState::scrolling:
+            scrollBoard(mTimeSinceLastUpdate.asSeconds());
+            break;
     }
    
     // Update everyone
@@ -942,7 +1009,10 @@ void cGameState::run()
         for ( int y = mTop; y <= mBottom; ++y )
         {
             auto p = mBoard.piece(x, y);
-            if ( p != nullptr ) p->update(mTimeSinceLastUpdate.asSeconds());
+            if ( p != nullptr )
+            {
+                p->update(mTimeSinceLastUpdate.asSeconds());
+            }
         }
     
     // ...including doodads
@@ -963,18 +1033,6 @@ void cGameState::run()
         }
     }
     
-    /*
-     
-     if we're in "refill" state:
-        - check move logic and see if we have to continue refilling; if not, call
-          start aftermath() which will set up the aftermath state - or call "start waiting"
-          which will put us back to waiting state, or call "stageover"
-     
-     if we're in "aftermath" state
-        - just continue animating; if everyone finished, call "start waiting", which will put
-          us back to start waiting, or call stageover
-
-     */
 }
 
 void cGameState::cleanup()

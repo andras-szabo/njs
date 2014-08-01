@@ -39,7 +39,9 @@ public:
     bool                guard(int x, int y) const;
     bool                normal(int x, int y) const;
     bool                diamond(int x, int y) const;
-
+    int                 getHighestDiamond() const;
+    void                moveEveryone(sf::Vector2f);
+    
 private:
     template<class T>
     std::unique_ptr<T>    spawn(const std::string& id)
