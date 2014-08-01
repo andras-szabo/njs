@@ -38,6 +38,8 @@ private:
     void                proceedWithMovement();
     bool                fallTo(int, int, int, int, bool vertOnly = false);
     void                makeGuardMove();
+    void                spawnDoodad();
+    void                makeSupers();
     
 public:
     std::string         mLevelName;
@@ -70,7 +72,10 @@ private:
     int                 mFallenDiamonds { 0 };
     int                 mGuardCount { 0 };
     int                 mSlimeCount { 0 };
-   
+  
+    std::vector<cJelly*>                    mPickedForPromotion;
+    std::vector<std::unique_ptr<cEntity>>   mDoodads;
+    
     std::vector<sf::Vector2i>               mGuards;
     std::vector<sf::Vector2i>               mTouchedFields;
     std::vector<sf::Vector2i>               mToBlowUp;

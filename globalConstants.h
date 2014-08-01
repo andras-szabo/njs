@@ -8,7 +8,8 @@
 enum class EntType  : short int { jelly = 1,
                                   diamond = 2,
                                   block = 3,
-                                  guard = 4 };
+                                  guard = 4,
+                                  doodad = 5 };
 
 enum class EntColour: short int { random = 0,         // or n/a
                                 red = 1,

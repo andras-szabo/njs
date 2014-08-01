@@ -20,43 +20,6 @@ mState { GameState::waiting }
 {
     loadLevel(rEngine.mStrParam);
     fillLevel();
-    
-    // Diagnostics! //////////////////////////////////////////////////////////////////////////////
-    cJelly* ptr = dynamic_cast<cJelly*>(mBoard.piece(5,5));
-    if ( ptr != nullptr )
-    {
-        ptr->makeSuper();
-    }
-    
-    ptr = dynamic_cast<cJelly*>(mBoard.piece(4,5));
-    if ( ptr != nullptr )
-    {
-        ptr->makeSuper();
-    }
-
-    ptr = dynamic_cast<cJelly*>(mBoard.piece(3,3));
-    if ( ptr != nullptr )
-    {
-        ptr->makeSuper();
-    }
-    
-    ptr = dynamic_cast<cJelly*>(mBoard.piece(3,5));
-    if ( ptr != nullptr )
-    {
-        ptr->makeSuper();
-    }
-    
-    ptr = dynamic_cast<cJelly*>(mBoard.piece(2,5));
-    if ( ptr != nullptr )
-    {
-        ptr->makeSuper();
-    }
-    
-    ptr = dynamic_cast<cJelly*>(mBoard.piece(2,4));
-    if ( ptr != nullptr )
-    {
-        ptr->makeSuper();
-    }
 
     // Diamond diagnostics
     mBoard.place(3,1, EntType::diamond);
@@ -303,6 +266,10 @@ void cGameState::render()
             if ( p != nullptr ) p->render(rWindow);
         }
 
+    // Render doodads
+    for ( auto& i : mDoodads )
+        i->render(rWindow);
+    
     // Render game info
 }
 
@@ -377,6 +344,34 @@ void cGameState::makeGuardMove()
     
 }
 
+void cGameState::makeSupers()
+{
+    if ( mDoodads.size() < 1 ) return;
+    for ( auto it = mDoodads.begin(); it != mDoodads.end(); )
+    {
+        int x, y;
+        int tries = 0;
+        do
+        {
+            x = rand() % mSizeX;
+            y = rand() % (mBottom - mTop) + mTop;
+        } while ( ++tries < 10 && (!mBoard.clickable(x, y) &&
+                                  !contains(mPickedForPromotion, dynamic_cast<cJelly*>(mBoard.piece(x, y)))) );
+        if ( tries < 10 )    // managed to find one
+        {
+            cJelly* ptr = dynamic_cast<cJelly*>(mBoard.piece(x,y));
+            mPickedForPromotion.push_back(ptr);
+            (*it)->setGoal(gkScrLeft + x * gkCellPixSizeX, gkScrTop + (y - mTop) * gkCellPixSizeY);
+            (*it)->mLives = 0;
+            ++it;
+        }
+        else                // couldn't find one, this is sadly wasted :(
+        {
+            it = mDoodads.erase(it);
+        }
+    }
+}
+
 void cGameState::switchToState(GameState s)
 {
     mState = s;
@@ -406,18 +401,15 @@ void cGameState::switchToState(GameState s)
         }
         case GameState::aftermath:
         {
-            // The fall of diamonds will be covered in the refill phase.
             // Aftermath:
+            // 0.) Make supers
             // 1.) Pick a guard and issue move command to it
             // 2.) If stuck ones around, pick a stuck one and issue move command to it.
             
+            makeSupers();
             makeGuardMove();
             // makeStuckMove();
             
-            // Diagnostic! ////////////////////////////////////////////////////////////////////
-            //mState = GameState::waiting;
-            //mToBlowUp.clear();
-            //mTouchedFields.clear();
             break;
         }
         case GameState::waiting:
@@ -427,6 +419,14 @@ void cGameState::switchToState(GameState s)
             break;
         }
     }
+}
+
+void cGameState::spawnDoodad()
+{
+    std::unique_ptr<cEntity>    ptr { new cEntity(rEngine, "doodad") };
+    sf::Vector2i vec = *mTouchedFields.rbegin();
+    ptr->setPos(gkScrLeft + vec.x * gkCellPixSizeX, gkScrTop + (vec.y - mTop) * gkCellPixSizeY);
+    mDoodads.push_back(std::move(ptr));
 }
 
 // Process events, considering current state
@@ -502,6 +502,19 @@ void cGameState::processEvents()
                 it = mTouchedFields.erase(it);
             }
         }
+    
+        // Check doodads: at any given time, the number of doodads should be mTouchedFields / 7
+        int n = mDoodads.size() - mTouchedFields.size() / 7;
+        if ( n < 0 )
+        {
+            spawnDoodad();
+        }
+        else
+        {
+            for ( int i = 0; i < n; ++i )
+                mDoodads.pop_back();
+        }
+    
     }
 }
 
@@ -811,6 +824,12 @@ void cGameState::proceedWithMovement()
             break;
     }
     
+    for ( const auto& i : mDoodads )
+    {
+        if ( i->mState == EntState::moving )
+            over = false;
+    }
+    
     if ( !over ) return;
     switchToState(GameState::waiting);
 }
@@ -910,8 +929,6 @@ void cGameState::run()
             break;
         case GameState::aftermath:
             proceedWithMovement();
-            // check if we're finished and can get back to
-            // waiting, or there's a stageover
             break;
     }
    
@@ -922,6 +939,24 @@ void cGameState::run()
             auto p = mBoard.piece(x, y);
             if ( p != nullptr ) p->update(mTimeSinceLastUpdate.asSeconds());
         }
+    
+    // ...including doodads
+    auto target = mPickedForPromotion.begin();
+    for ( auto it = mDoodads.begin(); it != mDoodads.end(); )
+    {
+        (*it)->update(mTimeSinceLastUpdate.asSeconds());
+        if ( (*it)->mLives < 1 && (*it)->mState != EntState::moving )
+        {
+            (*target)->makeSuper();
+            target = mPickedForPromotion.erase(target);
+            it = mDoodads.erase(it);
+        }
+        else
+        {
+            ++it;
+            ++target;
+        }
+    }
     
     /*
      
