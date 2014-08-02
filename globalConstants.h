@@ -52,7 +52,11 @@ const sf::Time                  gkExplosionDelay { sf::seconds(0.1) };
 const short int                 gkSuperBit = 32;
 const short int                 gkStuckBit = 64;
 const short int                 gkSlimeBit = 128;
-    
+
+// Scores
+const int                       gkJellyScore = 25;
+const int                       gkSuperScore = 100;
+
 // Graphics constants
 const float                     gkCellPixSizeX { 89 };
 const float                     gkCellPixSizeY { 89 };
@@ -60,7 +64,7 @@ const sf::Vector2f              gkClosedBkgTexCoords { 178, 0 };
 const sf::Vector2f              gkLightBkgTexCoords { 0, 0 };
 const sf::Vector2f              gkDarkBkgTexCoords { 89, 0 };
 const sf::Vector2f              gkSlimeTexCoords { 445, 0 };
-const float                     gkScrollSpeed { 50 };
+const float                     gkScrollSpeed { 100 };
 const float                     gkDiamondSpeed { 500 };
 const float                     gkGuardSpeed { 400 };
 const float                     gkJellySpeed { 500 };               // e.g. when zigzagging

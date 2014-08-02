@@ -41,6 +41,7 @@ public:
     bool                diamond(int x, int y) const;
     int                 getHighestDiamond() const;
     void                moveEveryone(sf::Vector2f);
+    bool                freeColumn(int x) const;
     
 private:
     template<class T>

@@ -41,7 +41,6 @@ void cBoard::mark(sf::Vector2i v, bool flip)
     if ( valid(v.x, v.y) ) mMarked[v.x][v.y] = flip;
 }
 
-
 void cBoard::resetMarked()
 {
     for ( int i = 0; i < mSizeX; ++i )
@@ -58,11 +57,16 @@ bool cBoard::canBlowUp(sf::Vector2i v)
     return mPieces[v.x][v.y]->mType != EntType::diamond;
 }
 
+bool cBoard::closed(int x, int y) const
+{
+    return x >= 0 && x < mSizeX && y >= 0 && y < mSizeY && mCell[x][y] == -1;
+}
+
 bool cBoard::valid(int x, int y) const
 {
     // Can we refer to a given pair of coordinates as valid?
     // Not if they are out of scope or pointing to inaccessible field.
-    return x >= 0 && x < mSizeX && y >= mTop-1 && y <= mBottom && mCell[x][y] != -1;
+    return x >= 0 && x < mSizeX && y >= 0 && y < mSizeY && mCell[x][y] != -1;
 }
 
 short cBoard::at(int x, int y) const
@@ -76,11 +80,6 @@ bool cBoard::empty(int x, int y) const
     return valid(x,y) && ( mCell[x][y] == 0 || mCell[x][y] == gkSlimeBit );
 }
 
-bool cBoard::closed(int x, int y) const
-{
-    return mCell[x][y] == -1;
-}
-
 void cBoard::moveEveryone(sf::Vector2f v)
 {
     for ( auto& i : mPieces )
@@ -91,14 +90,10 @@ void cBoard::moveEveryone(sf::Vector2f v)
 
 bool cBoard::clickable(int x, int y) const
 {
-    if (!valid(x, y) || mCell[x][y]==0 ) return false;
+    if ( !valid(x, y) || empty(x,y) ) return false;
     
     // Non-clickable things should have a colour of 0.
     return mPieces[x][y]->mColour != EntColour::random;
-    
-    //auto p = mCell[x][y] & 15;      // we're only interested in the lower
-    //                                // 4 bits (0th - 3rd)
-    //return p > 0 && p < 6;          // 0: empty, 6: diamond; in between jellies.
     
 }
 
@@ -176,7 +171,8 @@ short cBoard::colourAt(sf::Vector2i v) const
 
 bool cBoard::normal(int x, int y) const
 {
-    return valid(x, y) && !empty(x, y) && mPieces[x][y]->mType == EntType::jelly && !mPieces[x][y]->mSuper
+    // Non-empty, non-super, non-stuck jelly, that's the norm.
+    return valid(x,y) && !empty(x, y) && mPieces[x][y]->mType == EntType::jelly && !mPieces[x][y]->mSuper
     && mPieces[x][y]->mLives == 1;
 }
 
@@ -191,7 +187,20 @@ bool cBoard::slime(int x, int y) const
     // Note: this doesn't check for validity, because there
     // might be times when we need to check as-yet invisible
     // squares for being slimy too.
-    return mCell[x][y] & gkSlimeBit;
+    return valid(x, y) && (mCell[x][y] & gkSlimeBit);
+}
+
+// Is there at least one free space in given column?
+// (If there is, it'll move down, making space e.g.
+// for spawning diamonds)
+bool cBoard::freeColumn(int x) const
+{
+    if ( x < 0 || x >= mSizeX ) return false;
+    for ( int i = mTop; i <= mBottom; ++i )
+    {
+        if ( empty(x,i) ) return true;
+    }
+    return false;
 }
 
 bool cBoard::diamond(int x, int y) const
@@ -201,8 +210,7 @@ bool cBoard::diamond(int x, int y) const
 
 bool cBoard::fallible(int x, int y) const
 {
-    if ( !valid(x, y) || empty(x,y) ) return false;
-    return mPieces[x][y]->mFallible;
+    return valid(x, y) && !empty(x, y) && mPieces[x][y]->mFallible;
 }
 
 short cBoard::neighbourCount(int x, int y) const
@@ -239,10 +247,10 @@ void cBoard::executeFall(int p, int q, int x, int y)
 
 void cBoard::set(int x, int y, short value)
 {
-    //if ( valid(x,y) )
-    //{
+    if ( valid(x,y) )
+    {
         mCell[x][y] = value;
-    //}
+    }
 }
 
 void cBoard::clear()
@@ -270,7 +278,7 @@ void cBoard::reCreate(int x, int y, int top, int bottom)
 
 cEntity* cBoard::piece(int x, int y) const
 {
-    if ( !valid(x, y) || mCell[x][y] == 0 ) return nullptr;    
+    if ( !valid(x, y) || empty(x,y) ) return nullptr;
     return mPieces[x][y].get();
 }
 

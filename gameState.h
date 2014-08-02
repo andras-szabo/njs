@@ -5,6 +5,7 @@
 #include "board.h"
 #include "entity.h"
 #include <SFML/Graphics.hpp>
+#include <queue>
 
 class cGameState : public cState {
 public:
@@ -42,6 +43,10 @@ private:
     void                makeSupers();
     void                removeGuard(sf::Vector2i);
     void                scroll(int amount);
+    void                collectVisibleGuards();
+    void                setVcond(int*, int*);
+    void                checkVictoryConditions();
+    void                updateScoreEtc();
     
 public:
     std::string         mLevelName;
@@ -74,6 +79,8 @@ private:
     int                 mFallenDiamonds { 0 };
     int                 mGuardCount { 0 };
     int                 mSlimeCount { 0 };
+    
+    int                 mNoFillTop { -1 }, mNoFillBottom { -1 };
   
     std::vector<cJelly*>                    mPickedForPromotion;
     std::vector<std::unique_ptr<cEntity>>   mDoodads;
@@ -81,12 +88,30 @@ private:
     std::vector<int>                        mSlimes;    // Keeping track of the slime which is
                                                         // furthest on top, for scrolling purposes
     std::vector<cEntity*>                   mDiamonds;  // Keeping track on diamonds and their position
+    std::queue<int>                         mDiamondsToSpawn;
     
     std::vector<sf::Vector2i>               mGuards;
+    std::vector<sf::Vector2i>               mVisibleGuards;
+
     std::vector<sf::Vector2i>               mTouchedFields;
     std::vector<sf::Vector2i>               mToBlowUp;
     std::vector<sf::Vector2i>::iterator     itExplode;
     std::vector<std::vector<bool>>          visited;
     int                                     mToExplode;
+    
+    int*                                    pVictoryCondition { nullptr };
+    int*                                    pVictoryGoal { nullptr };
+    int                                     mDiamondGoal { 0 };
+    int                                     mNullValue { 0 };
+   
+    int                                     mStuckCount { 0 };
+    int                                     mScore { 0 };
+    int                                     mJelliesKilled { 0 };
+    int                                     mMovesLeft { 0 };
+    int                                     mPredictedScore { 0 };
+    
+    sf::Text                                tMovesLeft;
+    sf::Text                                tScore;
+    sf::Text                                tKills;
 };
 #endif /* defined(__not_jelly_splash__gameState__) */

@@ -20,9 +20,57 @@ mState { GameState::waiting }
 {
     loadLevel(rEngine.mStrParam);
     fillLevel();
+    collectVisibleGuards();
+    
+    tMovesLeft.setFont(rEngine.mFontHolder.get(FontID::defaultFont));
+    tMovesLeft.setCharacterSize(38);
+    tMovesLeft.setColor(sf::Color::Green);
+    
+    tScore.setFont(rEngine.mFontHolder.get(FontID::defaultFont));
+    tScore.setCharacterSize(38);
+    tScore.setColor(sf::Color::Green);
+    
 
-    // Diamond diagnostics
-    // mBoard.place(3,1, EntType::diamond);
+    tKills.setFont(rEngine.mFontHolder.get(FontID::defaultFont));
+    tKills.setCharacterSize(38);
+    tKills.setColor(sf::Color::Green);
+    
+    updateScoreEtc();
+}
+
+void cGameState::updateScoreEtc()
+{
+    std::string stmp { "Moves\nleft: " };
+    if ( mMovesLeft == -1 ) { stmp += " inf. "; }
+    else { stmp += std::to_string(mMovesLeft); }
+    tMovesLeft.setString(stmp);
+    tMovesLeft.setPosition(gkScrLeft * 0.1, gkViewSize.y * 0.2);
+    auto tWidth = tMovesLeft.getLocalBounds().width;
+    auto scale = (gkScrLeft * 0.8) / tWidth;
+    tMovesLeft.setScale(scale, scale);
+
+    tScore.setString("Score   \n\t" + std::to_string(mScore));
+    tScore.setPosition(gkScrLeft * 0.1, gkViewSize.y * 0.4);
+    tWidth = tScore.getLocalBounds().width;
+    scale = (gkScrLeft * 0.8) / tWidth;
+    tScore.setScale(scale, scale);
+    
+    tKills.setString("Jellies\nsplashed:\n\t" + std::to_string(mJelliesKilled));
+    tKills.setPosition(gkScrLeft * 0.1, gkViewSize.y * 0.6);
+    tWidth = tKills.getLocalBounds().width;
+    scale = (gkScrLeft * 0.8) / tWidth;
+    tKills.setScale(scale, scale);
+}
+
+void cGameState::collectVisibleGuards()
+{
+    mVisibleGuards.clear();
+    for ( const auto& i : mGuards )
+    {
+        if ( i.y >= mTop && i.y <= mBottom )
+            mVisibleGuards.push_back(i);
+    }
+        
 }
 
 // Fills level up with random jellies. This is not to be confused
@@ -36,9 +84,12 @@ void cGameState::fillLevel()
     for ( int i = 0; i < mSizeX; ++i )
         for ( int j = mTop; j < mSizeY; ++j )
         {
-            if ( mBoard.empty(i,j) )                  // empty
+            if ( j < mNoFillTop || j > mNoFillBottom )
             {
-                mBoard.place(i, j, EntType::jelly);     // default: random colour
+                if ( mBoard.empty(i,j) )                  // empty
+                {
+                    mBoard.place(i, j, EntType::jelly);     // default: random colour
+                }
             }
         }
     
@@ -98,7 +149,34 @@ void cGameState::makeSureItsPlayable()
     }
 }
 
+// Set victory condition
+void cGameState::setVcond(int* pa, int* pb)
+{
+    pVictoryCondition = pa;
+    pVictoryGoal = pb;
+}
 
+//
+// Level structure:
+// name
+// rows columns top bottom
+// onestar_points twostar_points threestar_points
+// MOVES x  <-- you start out with this many moves; if none: unlimited
+// VICTORY SCORE / DIAMOND xx / SLIME / GUARD / STUCK <--- what kind of level is this
+//                                            <--- with DIAMOND, xx is the number of
+//                                            <--- diamonds expected to be fallen
+//
+// NEW_DIAMOND_AFTER n x  <---- spawn n new diamonds after x (total!) splashed jellies
+//
+// DIAMOND x y          <---- place diamond on level
+// NOFILL y1 y2          <--- do NOT fill the are between rows [y1, y2]
+// INACC x y            <--- inaccessible terrain
+// SLIME x y            <--- grey slime
+// GUARD x y            <--- guard
+// BLOCK x y            <--- block
+// STUCK x y colour lives <---- stuck jelly
+// END
+//
 void cGameState::loadLevel(const std::string& sLevel)
 {
     std::ifstream   inFile(resourcePath() + sLevel + ".lvl");
@@ -116,9 +194,57 @@ void cGameState::loadLevel(const std::string& sLevel)
     
     mBoard.reCreate(mSizeX, mSizeY, mTop, mBottom);
     
+    // Read victory condition
     std::string     stmp;
-    int             xtmp, ytmp;
+    
     inFile >> stmp;
+    
+    if ( stmp != "MOVES" )
+    {
+        // No move limit
+        mMovesLeft = -1;
+    }
+    else
+    {
+        inFile >> mMovesLeft;
+        inFile >> stmp;
+    }
+    
+    if ( stmp != "VICTORY" )
+    {
+        // No victory condition; open-ended play: the
+        // victory condition ( *pVictoryCondition >= *pVictoryGoal )
+        // will never be met.
+        setVcond(&mNullValue, &mSizeX);
+    }
+    else
+    {
+        inFile >> stmp;
+        if ( stmp == "SCORE" )
+        {
+            setVcond(&mScore, &mStarScores[0]);
+        }
+        else if ( stmp == "SLIME" )
+        {
+            setVcond(&mNullValue, &mSlimeCount);
+        }
+        else if ( stmp == "GUARD" )
+        {
+            setVcond(&mNullValue, &mGuardCount);
+        }
+        else if ( stmp == "DIAMOND" || stmp == "DIAMONDS" )
+        {
+            inFile >> mDiamondGoal;
+            setVcond(&mFallenDiamonds, &mDiamondGoal);
+        }
+        else if ( stmp == "STUCK" )
+        {
+            setVcond(&mNullValue, &mStuckCount);
+        }
+        inFile >> stmp;
+    }
+
+    int             xtmp, ytmp;
     while ( stmp != "END" )
     {
         inFile >> xtmp >> ytmp;
@@ -153,27 +279,33 @@ void cGameState::loadLevel(const std::string& sLevel)
             
             // spawn stuck jelly, of colour ztmp, and with qtmp number of lives
         }
+        else if ( stmp == "NOFILL" )
+        {
+            mNoFillTop = xtmp;
+            mNoFillBottom = ytmp;
+        }
+        else if ( stmp == "DIAMOND" )
+        {
+            mBoard.place(xtmp, ytmp, EntType::diamond);
+        }
+        else if ( stmp == "NEW_DIAMONDS_AFTER" )
+        {
+            for ( int i = 0; i < xtmp; ++i )
+            {
+                mDiamondsToSpawn.push(ytmp);
+            }
+        }
         inFile >> stmp;
     }
     
     inFile.close();
-    
-    // Level structure:
-    // name
-    // rows columns top bottom
-    // onestar_points twostar_points threestar_points
-    // INACC x y            <--- inaccessible terrain
-    // SLIME x y            <--- grey slime
-    // GUARD x y            <--- guard
-    // BLOCK x y            <--- block
-    // STUCK x y colour lives <---- stuck jelly
-    // END
-    
+        
     // Create "visited" structure:
     for ( int i = 0; i < mSizeX; ++i )
         visited.push_back(std::vector<bool>(mSizeY, false));
     
-    // Sort slimes, in case we have any, so that lowest is on top
+    // Sort slimes, in case we have any, so that lowest is on top;
+    // this is necessary for knowing how much we can/should scroll
     if ( !mSlimes.empty() )
     {
         std::sort(mSlimes.begin(), mSlimes.end());
@@ -209,17 +341,33 @@ void cGameState::scrollBoard(float dt)
     mBoard.moveEveryone( v * gkScrollSpeed * dt);
 }
 
+// scroll(): sets new mTop and mBottom levels;
+// actual (visual) scrolling is done by
+// scrollBoard(dt), see above.
+// amount: amount of rows
 void cGameState::scroll(int amount)
 {
     mNeedToScroll = true;
     mTargetPos = mBoardPos;
     mTargetPos.y -= (amount * gkCellPixSizeY);
     
+    // Scrolling down means moving the board
+    // upwards, and vice versa, hence the -=.
+    
     mTop += amount;
     mBottom += amount;
     
     mBoard.mTop += amount;
     mBoard.mBottom += amount;
+    
+    // Re-calculate visible guards
+    
+    collectVisibleGuards();
+    
+    // And make sure that guards that
+    // have just only become visible can't multiply
+    
+    mGuardKilled = true;
 }
 
 void cGameState::setUpGraphics()
@@ -238,7 +386,7 @@ void cGameState::setUpGraphics()
             
             sf::Vector2f texcoords;
             
-            if ( mBoard.closed(i,j) )       // inaccesible terrain!
+            if ( !mBoard.valid(i,j) )       // inaccesible terrain!
             {
                 texcoords = gkClosedBkgTexCoords;
             }
@@ -274,9 +422,7 @@ void cGameState::init()
 
 void cGameState::render()
 {
-    // Render background
-    //      - this is simple: render some background texture ( perhaps not even needed ).
-    
+
     // Render board
     rWindow.draw(&pBoardVA[0], mSizeX * mSizeY * 4, sf::Quads, mBoardState);
 
@@ -285,21 +431,24 @@ void cGameState::render()
         for ( auto y = mTop; y <= mBottom; ++y )
             removeHilight(sf::Vector2i(x,y));
 
-    // Render connections
-
-    // Render jellies; to make sure, start with one line above mTop.
+    // Render jellies;
     for ( int i = 0; i < mSizeX; ++i )
-        for ( int j = mTop-1; j <= mBottom; ++j )
+        for ( int j = 0; j <= mBottom; ++j )
         {
             cEntity* p = mBoard.piece(i,j);
             if ( p != nullptr ) p->render(rWindow);
         }
 
-    // Render doodads
+    // Render doodads (the flying little pixiedust that marks
+    // super jellies to be born
     for ( auto& i : mDoodads )
         i->render(rWindow);
     
-    // Render game info
+    // Render other stuff
+    rWindow.draw(tMovesLeft);
+    rWindow.draw(tScore);
+    rWindow.draw(tKills);
+    
 }
 
 sf::Vector2i cGameState::screenToBoardTranslate(sf::Vector2i v)
@@ -339,14 +488,15 @@ bool cGameState::adjacent(sf::Vector2i a, sf::Vector2i b)
     return abs(a.x - b.x) <= 1 && abs(a.y - b.y) <= 1;
 }
 
+// Pick a random guard, make it move.
 void cGameState::makeGuardMove()
 {
-    if ( mGuardKilled || mGuardCount <= 0 ) return;
+    if ( mGuardKilled || mGuardCount <= 0 || mVisibleGuards.size() == 0 ) return;
     
-    auto mover = rand() % mGuardCount;
+    auto mover = rand() % mVisibleGuards.size();
     
-    int x = mGuards[mover].x;
-    int y = mGuards[mover].y;
+    int x = mVisibleGuards[mover].x;
+    int y = mVisibleGuards[mover].y;
     bool found = false;
 
     // Pick an adjacent one to the left, right, or top
@@ -367,6 +517,7 @@ void cGameState::makeGuardMove()
                     mBoard.piece(x+i, y+j)->setGoal(gkScrLeft + (x+i) * gkCellPixSizeX,
                                                     gkScrTop + (y + j - mTop) * gkCellPixSizeY);
                     mGuards.push_back(sf::Vector2i(x+i, y+j));
+                    mVisibleGuards.push_back(sf::Vector2i(x+i, y+j));
                     ++mGuardCount;
                     break;
                 }
@@ -402,6 +553,14 @@ void cGameState::makeSupers()
     }
 }
 
+void cGameState::checkVictoryConditions()
+{
+    if ( *pVictoryCondition >= *pVictoryGoal )
+    {
+        std::cout << "Yay!, victory!\n";
+    }
+}
+
 void cGameState::switchToState(GameState s)
 {
     mState = s;
@@ -409,9 +568,8 @@ void cGameState::switchToState(GameState s)
     switch ( s )
     {
         case GameState::executing:
-        {
-            
-            // Then set about making things explode in a timely manner
+        {            
+            if ( mMovesLeft > 0 ) --mMovesLeft;
             mGuardKilled = false;
             itExplode = mToBlowUp.begin();
             mAccumulatedTime = gkExplosionDelay;    // make sure to blow the first up right away
@@ -433,11 +591,11 @@ void cGameState::switchToState(GameState s)
         {
             makeSupers();
             makeGuardMove();
-            // makeStuckMove();
             break;
         }
         case GameState::scrolling:
         {
+            // Check how much we can / have to scroll
             if ( mSlimes.empty() ) switchToState(GameState::waiting);   // no scroll if no slime left
             else
             {
@@ -462,6 +620,13 @@ void cGameState::switchToState(GameState s)
         }
         case GameState::waiting:
         {
+            mScore += mPredictedScore;
+            updateScoreEtc();
+            checkVictoryConditions();
+            if ( mMovesLeft == 0 )
+            {
+                // Game over!
+            }
             mToBlowUp.clear();
             mTouchedFields.clear();
             break;
@@ -660,10 +825,12 @@ void cGameState::hilight(sf::Vector2i v, bool lastOne)
             tmpv.x = v.x + (stepx * i);   tmpv.y = v.y + (stepy * i);
             if ( mBoard.canBlowUp(tmpv) )
             {
+                mPredictedScore += gkJellyScore;
                 prepareHilight(tmpv);
                 mToBlowUp.push_back(tmpv);
                 if ( mBoard.piece(tmpv.x, tmpv.y)->mSuper )
                 {
+                    mPredictedScore += gkSuperScore;
                     hilight(tmpv);
                 }
             }
@@ -680,15 +847,18 @@ void cGameState::predictOutcome()
     mToBlowUp.clear();
     mFirstSuperDirection = Direction::undecided;
     mLastSuperDirection = Direction::undecided;
+    mPredictedScore = 0;
     for ( const auto& i : mTouchedFields )
     {
         if ( !mBoard.marked(i) )                        // not already marked?
         {
+            mPredictedScore += gkJellyScore;
             prepareHilight(i);              // mark it, hilight its background
             mToBlowUp.push_back(i);         // add node to the list of positions to be blown up
             
             if ( mBoard.piece(i.x, i.y)->mSuper )
             {
+                mPredictedScore += gkSuperScore;
                 hilight(i);     // Will recursively hilight everything
             }
         }
@@ -705,6 +875,8 @@ void cGameState::predictOutcome()
     
     for ( const auto& i : mToBlowUp )
         mBoard.piece(i.x, i.y)->predictDamage(mToBlowUp.size());
+    
+    mPredictedScore *= 1 + (mToBlowUp.size() / 3);
 }
 
 void cGameState::removeGuard(sf::Vector2i vec)
@@ -712,6 +884,7 @@ void cGameState::removeGuard(sf::Vector2i vec)
     --mGuardCount;
     mGuardKilled = true;
     mGuards.erase(std::find(mGuards.begin(), mGuards.end(), vec));
+    mVisibleGuards.erase(std::find(mVisibleGuards.begin(), mVisibleGuards.end(), vec));
 }
 
 void cGameState::proceedWithExplosions(sf::Time dt)
@@ -733,6 +906,7 @@ void cGameState::proceedWithExplosions(sf::Time dt)
                 removeGuard(sf::Vector2i(x, y));
             }
             mBoard.piece(x, y)->explode(mToBlowUp.size());
+            ++mJelliesKilled;
             
             // Now check if there's a guard nearby, and if so,
             // make that explode as well.
@@ -749,7 +923,7 @@ void cGameState::proceedWithExplosions(sf::Time dt)
                         {
                             if ( mBoard.guard(x+i, y+j)
                                 && !contains(mToBlowUp, sf::Vector2i(x+i, y+j))
-                                && contains(mGuards, sf::Vector2i(x+i, y+j)) )
+                                && contains(mVisibleGuards, sf::Vector2i(x+i, y+j)) )
                             {
                                 mBoard.piece(x+i, y+j)->explode();
                                 removeGuard(sf::Vector2i(x+i, y+j));
@@ -775,12 +949,14 @@ void cGameState::removeAndCheck()
                 if ( mBoard.piece(i,j)->mLives <= 0 )
                 {
                     // If the dead jelly was not a guard, then we have to remove
-                    // the slime, and reset appropriate coords of the vertexarray
+                    // the slime, (that may have been under it), and reset
+                    // appropriate coords of the vertexarray
                     if ( mBoard.piece(i,j)->mType == EntType::jelly && mBoard.slime(i,j) )
                     {
                         mSlimes.erase(std::find(mSlimes.begin(), mSlimes.end(), j));
                         --mSlimeCount;
                         mBoard.set(i, j, 0);
+                        
                         auto p = i * 4 + j * 4 * mSizeX;
                         auto texcoords = ( i + j ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
                     
@@ -812,11 +988,50 @@ void cGameState::refillTop()
 {
     // Fill up above-the-top line. mBoard.place() won't do anything
     // if that's an invalid field; and it'll overwrite whatever is
-    // on that position, in case there's something there.
+    // on that position, in case there's something there - with the
+    // exception of previously spawned diamonds.
     for ( int x = 0; x < mSizeX; ++x )
     {
-        mBoard.place(x, mTop-1, EntType::jelly);
+        if ( !mBoard.diamond(x, mTop-1) )
+        {
+            mBoard.place(x, mTop-1, EntType::jelly);
+        }
     }
+    
+    // However, if there are diamonds to spawn, let's spawn 'em here.
+    if ( !mDiamondsToSpawn.empty() && mJelliesKilled >= mDiamondsToSpawn.front())
+    {
+        mDiamondsToSpawn.pop();
+        // Look for a place where we are sure to have a free way
+        int x = 0;
+        while ( x < mSizeX && (mBoard.diamond(x, mTop-1) || mBoard.closed(x, mTop-1) || !mBoard.freeColumn(x)))
+        {
+            ++x;
+        }
+        if ( x == mSizeX )  // won't be able to spawn it reliably from top => let's just put it on board
+        {                   // at the first place it'll fit
+            bool found = false;
+            for ( int x = 0; x < mSizeX; ++x )
+            {
+                for ( int y = mTop; y <= mBottom; ++y )
+                {
+                    if ( !mBoard.closed(x,y) && !mBoard.diamond(x,y) )
+                    {
+                        mBoard.place(x, y, EntType::diamond);
+                        found = true;
+                        break;
+                    }
+                }
+                if ( found == true )
+                    break;
+            }
+        }
+        else    // Yup, we can drop it in from top
+        {
+            mBoard.place(x, mTop-1, EntType::diamond);
+        }
+    }
+    
 }
 
 // The recursive fall function. If vertOnly is true, then
@@ -824,7 +1039,7 @@ void cGameState::refillTop()
 // can fall, check things below it, and fall there if possible;
 // if not, recursively check the ones below (i.e. whether it'd
 // be possible to fall if the thing below us fell as well).
-
+// Basic idea: falling from p,q to x,y.
 bool cGameState::fallTo(int p, int q, int x, int y, bool vertOnly)
 {
     if ( p < 0 || p >= mSizeX || q < 0 || q > mBottom ) return false;
@@ -934,6 +1149,8 @@ void cGameState::proceedWithFalling()
         }
     }
     
+    // Won't proceed until after all pieces have stopped moving
+    // (i.e. wait until there's no piece in EntState::moving)
     bool proceed { true };
     for ( int i = 0; i < mSizeX; ++i )
     {
@@ -981,13 +1198,12 @@ void cGameState::proceedWithFalling()
 void cGameState::run()
 {
     mTimeSinceLastUpdate = mClock.restart();
-    
+
     processEvents();
     
     switch ( mState ) {
         case GameState::waiting:
             predictOutcome();           // prepares and highlights outcome of move
-            //prepareConnections();       // prepares the gfx for connecting jellies
             break;
         case GameState::executing:
             proceedWithExplosions(mTimeSinceLastUpdate);
@@ -1004,7 +1220,9 @@ void cGameState::run()
             break;
     }
    
-    // Update everyone
+    // Update everyone who's visible; check their lives to
+    // see if stuck jellies are still stuck
+    mStuckCount = 0;
     for ( int x = 0; x < mSizeX; ++ x )
         for ( int y = mTop; y <= mBottom; ++y )
         {
@@ -1012,6 +1230,7 @@ void cGameState::run()
             if ( p != nullptr )
             {
                 p->update(mTimeSinceLastUpdate.asSeconds());
+                if ( p->mLives > 1 ) ++mStuckCount;
             }
         }
     
@@ -1022,6 +1241,8 @@ void cGameState::run()
         (*it)->update(mTimeSinceLastUpdate.asSeconds());
         if ( (*it)->mLives < 1 && (*it)->mState != EntState::moving )
         {
+            // If we're here, the doodad pointed at by *it has reached
+            // its destination, so we can create that super and del the doodad
             (*target)->makeSuper();
             target = mPickedForPromotion.erase(target);
             it = mDoodads.erase(it);
