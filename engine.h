@@ -30,6 +30,7 @@ public:
     // mStrParam is the postbox through which states can pass
     // strings to one another
     std::string                                         mStrParam;
+    std::string                                         mStrOtherParam;
     
 private:
     template <typename T>               // Creates an appropriate state and pushes it onto the

@@ -51,7 +51,10 @@ void cBoard::resetMarked()
 bool cBoard::canBlowUp(sf::Vector2i v)
 {
     // If invalid, or already marked: nope
-    if ( !valid(v.x, v.y) || mMarked[v.x][v.y] || empty(v.x, v.y) ) return false;
+    if ( !valid(v.x, v.y) || mMarked[v.x][v.y] || mCell[v.x][v.y] == 0 ) return false;
+    
+    // If it's only grey slime - yes, that can blow up too
+    if ( mCell[v.x][v.y] == gkSlimeBit ) return true;
     
     // What can't blow up? Diamonds, that's what.
     return mPieces[v.x][v.y]->mType != EntType::diamond;
@@ -149,7 +152,7 @@ void cBoard::makeTriplet(int x, int y)
         for ( int j = -1; j < 2; ++j )
             if ( ( i != 0 || j != 0 ) && clickable(x+i, y+j) )
                 adj.push_back(mPieces[x+i][y+j].get());
-    
+
     (*adj.begin())->switchColour(mPieces[x][y]->mColour);
     (*adj.rbegin())->switchColour(mPieces[x][y]->mColour);
     
@@ -215,7 +218,7 @@ bool cBoard::fallible(int x, int y) const
 
 short cBoard::neighbourCount(int x, int y) const
 {
-    if (!valid(x, y)) return 0;
+    if (!valid(x, y) || empty(x, y)) return 0;
     
     short count = 0;
     
@@ -296,6 +299,25 @@ int cBoard::getHighestDiamond() const
         for ( int i = 0; i < mSizeX; ++i )
         {
             if ( diamond(i, j) )
+            {
+                highest = j;
+                break;
+            }
+        }
+        if ( highest != mBottom)
+            break;
+    }
+    return highest;
+}
+
+int cBoard::getHighestStuck() const
+{
+    int highest { mBottom };
+    for ( int j = mTop; j < mBottom; ++j )
+    {
+        for ( int i = 0; i < mSizeX; ++i )
+        {
+            if ( valid(i,j) && !empty(i, j) && mPieces[i][j]->mLives > 1 )
             {
                 highest = j;
                 break;

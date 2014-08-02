@@ -47,6 +47,7 @@ private:
     void                setVcond(int*, int*);
     void                checkVictoryConditions();
     void                updateScoreEtc();
+    void                prepareIntroMessage();
     
 public:
     std::string         mLevelName;
@@ -98,7 +99,8 @@ private:
     std::vector<sf::Vector2i>::iterator     itExplode;
     std::vector<std::vector<bool>>          visited;
     int                                     mToExplode;
-    
+  
+    std::string                             mLevelType;
     int*                                    pVictoryCondition { nullptr };
     int*                                    pVictoryGoal { nullptr };
     int                                     mDiamondGoal { 0 };

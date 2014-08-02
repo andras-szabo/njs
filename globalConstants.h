@@ -26,7 +26,7 @@ enum class EntState: short int { normal, exploding, moving, explOver };
 enum class Direction : short int { undecided = 0, horizontal = 1, vertical = 2 };
     
 // Game states
-enum class GameState :  unsigned int { waiting, executing, refilling, aftermath, scrolling };
+enum class GameState :  unsigned int { intro, waiting, executing, refilling, aftermath, scrolling };
 
 // Font and texture IDs
 enum class FontID   :   unsigned int { defaultFont };
@@ -68,7 +68,7 @@ const float                     gkScrollSpeed { 100 };
 const float                     gkDiamondSpeed { 500 };
 const float                     gkGuardSpeed { 400 };
 const float                     gkJellySpeed { 500 };               // e.g. when zigzagging
-const float                     gkNearEnough { 50 };
+const float                     gkNearEnough { 80 };
 const float                     gkScrLeft { (gkViewSize.x - (gkCellPixSizeX * 7)) / 2.f };
 const float                     gkScrTop { 0 };
 const sf::Color                 gkHilightColor (220, 120, 220, 120);

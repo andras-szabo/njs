@@ -1,6 +1,9 @@
 #include "engine.h"
 #include "introState.h"
 #include "gameState.h"
+#include "pauseState.h"
+#include "messageState.h"
+#include "menuState.h"
 #include <fstream>
 
 cEngine::cEngine()
@@ -94,13 +97,11 @@ void cEngine::pushState(const std::string& s)
     if ( !mStateStack.empty() ) ( *mStateStack.rbegin())->deactivate();
     
     if ( s == "game" ) launchState<cGameState>();
-    
-    // if ( s == "mainMenu" ) launchState<cMenuState>();
-    // if ( s == "game" ) launchState<cGameState>();
-    // if ( s == "pause" ) launchState<cPauseState>();
-    // if ( s == "controlMenu" ) launchState<cControlState>();
-    // if ( s == "hiScore" ) { mStrParam = "__HISCORES__"; launchState<cMessageState>(); }
-    // if ( s == "gameOver" ) { mStrParam = "__GAMEOVER__"; launchState<cMessageState>(); }
+    if ( s == "pause" ) launchState<cPauseState>();
+    if ( s == "victory" ) { mStrParam = "__VICTORY__"; launchState<cMessageState>(); }
+    if ( s == "defeat" ) { mStrParam = "__DEFEAT__"; launchState<cMessageState>(); }
+    if ( s == "message" ) launchState<cMessageState>();
+    if ( s == "menu" ) launchState<cMenuState>();
 }
 
 void cEngine::popState()

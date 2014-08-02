@@ -40,6 +40,7 @@ public:
     bool                normal(int x, int y) const;
     bool                diamond(int x, int y) const;
     int                 getHighestDiamond() const;
+    int                 getHighestStuck() const;
     void                moveEveryone(sf::Vector2f);
     bool                freeColumn(int x) const;
     

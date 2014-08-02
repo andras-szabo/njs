@@ -30,8 +30,7 @@ void cIntroState::run()
     {
         if ( event.type == sf::Event::KeyPressed )
         {
-            swapRequest("game");
-            rEngine.mStrParam = "01";
+            swapRequest("menu");
             clearRequest();                 // tmp: just quit
             return;
         }
@@ -42,9 +41,7 @@ void cIntroState::run()
     mTimePassed += mClock.restart();
     if ( mTimePassed >= mProceedTimer )
     {
-        swapRequest("game");
-        rEngine.mStrParam="01";
-        clearRequest();                     // tmp: just quit
+        swapRequest("menu");
         return;
     }
     

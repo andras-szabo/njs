@@ -107,7 +107,8 @@ void cGameState::dfs(int i, int j, int& depth, int maxdepth)
 
     for ( int x = -1; x < 2; ++x )
         for ( int y = -1; y < 2; ++y )
-            if ( (x != 0 || y != 0) && mBoard.clickable(i+x, j+y) )
+            if ( (x != 0 || y != 0) && mBoard.clickable(i+x, j+y)
+                && mBoard.colourAt(sf::Vector2i(i+x, j+y)) == mBoard.colourAt(sf::Vector2i(i,j)))
                 dfs(i+x, j+y, depth, maxdepth);
 }
 
@@ -116,18 +117,43 @@ void cGameState::dfs(int i, int j, int& depth, int maxdepth)
 void cGameState::makeSureItsPlayable()
 {
     int depth { 0 };
+    int clickableCount { 0 };
+    
     for ( int i = 0; i < mSizeX; ++i )
         for ( int j = 0; j < mSizeY; ++j )
+        {
+            if ( j >= mTop && j <= mBottom && mBoard.clickable(i,j) )
+            {
+                ++clickableCount;
+            }
             visited[i][j] = false;
+        }
     
     for ( int i = 0; i < mSizeX; ++i )
     {
-        for ( int j = mTop; j < mBottom; ++j )
+        for ( int j = mTop; j <= mBottom; ++j )
         {
             dfs(i, j, depth, 3);
-            if ( depth >= 3 ) break;
+            if ( depth >= 3 )
+            {
+                break;
+            }
+            else
+            {
+                depth = 0;
+            }
         }
         if (depth >= 3 ) break;
+    }
+    
+    // If there are no 3 clickable folks on the board,
+    // you lost :(
+    
+    if ( clickableCount < 3 )
+    {
+        rEngine.mStrParam = "__DEFEAT__";
+        pushRequest("message");
+        return;
     }
     
     // If there's no triplet found:
@@ -144,7 +170,6 @@ void cGameState::makeSureItsPlayable()
             tmpy = rand() % (mBottom - mTop) + mTop;
         }
         while ( mBoard.neighbourCount(tmpx, tmpy) < 2 );
-        
         mBoard.makeTriplet(tmpx, tmpy);
     }
 }
@@ -216,6 +241,7 @@ void cGameState::loadLevel(const std::string& sLevel)
         // victory condition ( *pVictoryCondition >= *pVictoryGoal )
         // will never be met.
         setVcond(&mNullValue, &mSizeX);
+        mLevelType = "OPEN";
     }
     else
     {
@@ -241,6 +267,7 @@ void cGameState::loadLevel(const std::string& sLevel)
         {
             setVcond(&mNullValue, &mStuckCount);
         }
+        mLevelType = stmp;
         inFile >> stmp;
     }
 
@@ -418,6 +445,10 @@ void cGameState::init()
     // Set up the vertexArray of the board
     pBoardVA = new sf::Vertex[ mSizeX * mSizeY * 4 ];
     setUpGraphics();
+
+    // Switch into "intro" state, to show the
+    // introductory text
+    mState = GameState::intro;
 }
 
 void cGameState::render()
@@ -557,7 +588,7 @@ void cGameState::checkVictoryConditions()
 {
     if ( *pVictoryCondition >= *pVictoryGoal )
     {
-        std::cout << "Yay!, victory!\n";
+        pushRequest("victory");
     }
 }
 
@@ -600,11 +631,13 @@ void cGameState::switchToState(GameState s)
             else
             {
                 auto highest = *mSlimes.begin();
-                if ( highest >= mBottom )   // possibly need to scroll
+                if ( highest > mBottom || (highest == mBottom && mBottom < mSizeY-1) )   // possibly need to scroll
                 {
-                    auto highestDiamond = mBoard.getHighestDiamond();  // will return mBottom if no diamonds
+                    auto highestDiamond = mBoard.getHighestDiamond();   // will return mBottom if no diamonds
+                    auto highestStuck = mBoard.getHighestStuck();       // will return mBottom if no stuck
+                    highestDiamond = std::min(highestDiamond, highestStuck);
                     auto scrollAmount = std::min(highest - mBottom + 1, highestDiamond - mTop);
-                    scrollAmount = std::min(scrollAmount, (mSizeY-1) - mBottom);
+                    scrollAmount = std::min(scrollAmount, (mSizeY - 1) - mBottom);
                     if ( scrollAmount > 0)
                     {
                         scroll(scrollAmount);
@@ -625,10 +658,11 @@ void cGameState::switchToState(GameState s)
             checkVictoryConditions();
             if ( mMovesLeft == 0 )
             {
-                // Game over!
+                pushRequest("defeat");
             }
             mToBlowUp.clear();
             mTouchedFields.clear();
+            makeSureItsPlayable();
             break;
         }
     }
@@ -652,6 +686,17 @@ void cGameState::processEvents()
         {
             clearRequest();
             return;
+        }
+        
+        if ( event.type == sf::Event::KeyPressed )
+        {
+            switch ( event.key.code ) {
+                case sf::Keyboard::Key::Escape: {
+                    pushRequest("pause");
+                    break;
+                }
+                default: break;
+            }
         }
         
         if ( mState == GameState::waiting )
@@ -828,7 +873,7 @@ void cGameState::hilight(sf::Vector2i v, bool lastOne)
                 mPredictedScore += gkJellyScore;
                 prepareHilight(tmpv);
                 mToBlowUp.push_back(tmpv);
-                if ( mBoard.piece(tmpv.x, tmpv.y)->mSuper )
+                if ( mBoard.piece(tmpv.x, tmpv.y) != nullptr && mBoard.piece(tmpv.x, tmpv.y)->mSuper )
                 {
                     mPredictedScore += gkSuperScore;
                     hilight(tmpv);
@@ -874,7 +919,14 @@ void cGameState::predictOutcome()
     }
     
     for ( const auto& i : mToBlowUp )
-        mBoard.piece(i.x, i.y)->predictDamage(mToBlowUp.size());
+    {
+        // Have to check for nullptr: could be also an empty
+        // cell with just slime on it
+        if ( mBoard.piece(i.x, i.y) != nullptr )
+        {
+            mBoard.piece(i.x, i.y)->predictDamage(mToBlowUp.size());
+        }
+    }
     
     mPredictedScore *= 1 + (mToBlowUp.size() / 3);
 }
@@ -901,12 +953,33 @@ void cGameState::proceedWithExplosions(sf::Time dt)
             mAccumulatedTime = sf::Time::Zero;
             auto x = (*itExplode).x;
             auto y = (*itExplode).y;
+            
             if ( mBoard.guard(x, y) )
             {
                 removeGuard(sf::Vector2i(x, y));
             }
-            mBoard.piece(x, y)->explode(mToBlowUp.size());
-            ++mJelliesKilled;
+            
+            if ( mBoard.empty(x, y) )
+            {
+                // Blowing up an empty field?
+                // Yes, because there's slime on it.
+                // It also means one fewer actual explosions.
+                mBoard.set(x, y, 0);
+                --mToExplode;
+                
+                auto p = x * 4 + y * 4 * mSizeX;
+                auto texcoords = ( x + y ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
+                
+                pBoardVA[p].texCoords   = texcoords;
+                pBoardVA[p+1].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, 0 };
+                pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
+                pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
+            }
+            else
+            {
+                mBoard.piece(x, y)->explode(mToBlowUp.size());
+                ++mJelliesKilled;
+            }
             
             // Now check if there's a guard nearby, and if so,
             // make that explode as well.
@@ -1194,6 +1267,53 @@ void cGameState::proceedWithFalling()
     }
 }
 
+void cGameState::prepareIntroMessage()
+{
+    rEngine.mStrParam = mLevelName;
+    
+    std::string stmp;
+    
+    if ( mLevelType == "SCORE" )
+    {
+        stmp = "This is a SCORE level.\n";
+        stmp += "Reach at least " +std::to_string(mStarScores[0]) + "\n";
+        stmp += "points to win.\n";
+    }
+    else if ( mLevelType == "DIAMOND" || mLevelType == "DIAMONDS" )
+    {
+        stmp = "This is a DIAMOND level.\n";
+        stmp += "Drop " + std::to_string(mDiamondGoal) + " diamond";
+        if ( mDiamondGoal > 1) stmp += "s";
+        stmp += "\nin order to win.\n";
+    }
+    else if ( mLevelType == "SLIME" )
+    {
+        stmp = "This is a GREY SLIME level.\n";
+        stmp += "Clear " + std::to_string(mSlimeCount) + " slime tiles\n";
+        stmp += "in order to win.\n";
+    }
+    else if ( mLevelType == "GUARD" )
+    {
+        stmp = "This is a GUARD level.\n";
+        stmp += "Splash all guard jellies\n";
+        stmp += "in order to win.\n";
+    }
+    else if ( mLevelType == "STUCK" )
+    {
+        stmp = "This is a STUCK level.\n";
+        stmp += "Splash all stuck jellies\n";
+        stmp += "in order to win.\n";
+    }
+    else {
+        stmp = "This is an open ended level.\n";
+        stmp += "It has no explicit objective.\n";
+        stmp += "Just play to your heart's content!\n";
+        stmp += "\t\t:)";
+    }
+    
+    rEngine.mStrOtherParam = stmp;
+}
+
 // run() is called once every frame.
 void cGameState::run()
 {
@@ -1202,6 +1322,13 @@ void cGameState::run()
     processEvents();
     
     switch ( mState ) {
+        case GameState::intro:
+            {
+                prepareIntroMessage();
+                pushRequest("message");
+                switchToState(GameState::waiting);
+                break;
+            }
         case GameState::waiting:
             predictOutcome();           // prepares and highlights outcome of move
             break;
@@ -1264,5 +1391,5 @@ void cGameState::cleanup()
 
 void cGameState::reset()
 {
-    
+    mClock.restart();
 }
