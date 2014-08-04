@@ -17,7 +17,6 @@ public:
     
     void        run();
     void        request(SAID, const std::string& = " ");
-    void        addHiScore(unsigned int, const std::string&);
     
 public:
     sf::RenderWindow                                    mWindow;
