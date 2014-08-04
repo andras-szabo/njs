@@ -31,6 +31,11 @@ void cBoard::init()
     }    
 }
 
+void cBoard::clearNode(int x, int y)
+{
+    mCell[x][y] = 0;
+}
+
 bool cBoard::marked(sf::Vector2i v) const
 {
     return valid(v.x, v.y) ? mMarked[v.x][v.y] : false;
@@ -48,7 +53,7 @@ void cBoard::resetMarked()
             mMarked[i][j] = false;
 }
 
-bool cBoard::canBlowUp(sf::Vector2i v)
+bool cBoard::canBlowUp(sf::Vector2i v) const
 {
     // If invalid, or already marked: nope
     if ( !valid(v.x, v.y) || mMarked[v.x][v.y] || mCell[v.x][v.y] == 0 ) return false;

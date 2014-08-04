@@ -48,6 +48,9 @@ private:
     void                checkVictoryConditions();
     void                updateScoreEtc();
     void                prepareIntroMessage();
+    void                setBgQuadTex(int x, int y, sf::Vector2f texcoords);
+    void                setBgQuadCol(int x, int y, sf::Color col);
+    void                removeSlime(int x, int y);
     
 public:
     std::string         mLevelName;

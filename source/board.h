@@ -13,37 +13,37 @@ class cBoard {
 public:
     cBoard(cEngine& engine, int x = 7, int y = 9, int bottom = 8, int top = 0);
     
-    bool                valid(int x, int y) const;
-    bool                closed(int x, int y) const;
-    void                init();
     short               at(int x, int y) const;
-    bool                empty(int x, int y) const;
-    void                set(int x, int y, short value);
+    bool                canBlowUp(sf::Vector2i) const;
     void                clear();
-    void                reCreate(int x, int y, int bottom, int top);
-    
-    cEntity*            piece(int x, int y) const;
-    void                place(int x, int y, EntType t, EntColour c = EntColour::random, bool super = false);
+    void                clearNode(int x, int y);
     bool                clickable(int x, int y) const;
-    short               neighbourCount(int x, int y) const;
-    void                makeTriplet(int x, int y);
+    bool                closed(int x, int y) const;
     short               colourAt(sf::Vector2i) const;
-    bool                marked(sf::Vector2i) const;
-    void                mark(sf::Vector2i, bool);
-    void                resetMarked();
-    bool                canBlowUp(sf::Vector2i);
-    void                remove(int x, int y);
-    bool                fallible(int x, int y) const;
-    void                executeFall(int, int, int, int);
-    bool                slime(int x, int y) const;
-    bool                guard(int x, int y) const;
-    bool                normal(int x, int y) const;
     bool                diamond(int x, int y) const;
+    bool                empty(int x, int y) const;
+    void                executeFall(int, int, int, int);
+    bool                freeColumn(int x) const;
+    bool                fallible(int x, int y) const;
     int                 getHighestDiamond() const;
     int                 getHighestStuck() const;
+    bool                guard(int x, int y) const;
+    void                init();
+    void                makeTriplet(int x, int y);
+    void                mark(sf::Vector2i, bool);
+    bool                marked(sf::Vector2i) const;
     void                moveEveryone(sf::Vector2f);
-    bool                freeColumn(int x) const;
-    
+    short               neighbourCount(int x, int y) const;
+    bool                normal(int x, int y) const;
+    cEntity*            piece(int x, int y) const;
+    void                place(int x, int y, EntType t, EntColour c = EntColour::random, bool super = false);
+    void                reCreate(int x, int y, int bottom, int top);
+    void                remove(int x, int y);
+    void                resetMarked();
+    void                set(int x, int y, short value);
+    bool                slime(int x, int y) const;
+    bool                valid(int x, int y) const;
+
 private:
     template<class T>
     std::unique_ptr<T>    spawn(const std::string& id)

@@ -397,6 +397,24 @@ void cGameState::scroll(int amount)
     mGuardKilled = true;
 }
 
+void cGameState::setBgQuadTex(int x, int y, sf::Vector2f texcoords)
+{
+    size_t p = x * 4 + y * 4 * mSizeX;
+    pBoardVA[p].texCoords   = texcoords;
+    pBoardVA[p+1].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, 0 };
+    pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
+    pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
+}
+
+void cGameState::setBgQuadCol(int x, int y, sf::Color col)
+{
+    size_t p = x * 4 + y * 4 * mSizeX;
+    pBoardVA[p].color = col;
+    pBoardVA[p+1].color = col;
+    pBoardVA[p+2].color = col;
+    pBoardVA[p+3].color = col;
+}
+
 void cGameState::setUpGraphics()
 {
     // Set up alternating darker and lighter board backgrounds;
@@ -426,10 +444,8 @@ void cGameState::setUpGraphics()
                 texcoords = ( i + j ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
             }
             
-            pBoardVA[p].texCoords   = texcoords;
-            pBoardVA[p+1].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, 0 };
-            pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
-            pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
+            setBgQuadTex(i, j, texcoords);
+
         }
     
     // Set up renderstate for board rendering
@@ -785,21 +801,13 @@ void cGameState::processEvents()
 void cGameState::prepareHilight(sf::Vector2i v)
 {
     mBoard.mark(v, true);
-    auto p = v.x * 4 + v.y * 4 * mSizeX;
-    pBoardVA[p].color = gkHilightColor;
-    pBoardVA[p+1].color = gkHilightColor;
-    pBoardVA[p+2].color = gkHilightColor;
-    pBoardVA[p+3].color = gkHilightColor;
+    setBgQuadCol(v.x, v.y, gkHilightColor);
 }
 
 void cGameState::removeHilight(sf::Vector2i v)
 {
     mBoard.mark(v, false);
-    auto p = v.x * 4 + v.y * mSizeX * 4;
-    pBoardVA[p].color = sf::Color(255, 255, 255, 255);
-    pBoardVA[p+1].color = sf::Color(255, 255, 255, 255);
-    pBoardVA[p+2].color = sf::Color(255, 255, 255, 255);
-    pBoardVA[p+3].color = sf::Color(255, 255, 255, 255);
+    setBgQuadCol(v.x, v.y, sf::Color(255, 255, 255, 255));
 }
 
 void cGameState::hilight(sf::Vector2i v, bool lastOne)
@@ -939,6 +947,13 @@ void cGameState::removeGuard(sf::Vector2i vec)
     mVisibleGuards.erase(std::find(mVisibleGuards.begin(), mVisibleGuards.end(), vec));
 }
 
+void cGameState::removeSlime(int x, int y)
+{
+    mBoard.clearNode(x, y);
+    auto texcoords = ( x + y ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
+    setBgQuadTex(x, y, texcoords);
+}
+
 void cGameState::proceedWithExplosions(sf::Time dt)
 {
     // itExplode points to the next item we should blow up
@@ -964,16 +979,8 @@ void cGameState::proceedWithExplosions(sf::Time dt)
                 // Blowing up an empty field?
                 // Yes, because there's slime on it.
                 // It also means one fewer actual explosions.
-                mBoard.set(x, y, 0);
                 --mToExplode;
-                
-                auto p = x * 4 + y * 4 * mSizeX;
-                auto texcoords = ( x + y ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
-                
-                pBoardVA[p].texCoords   = texcoords;
-                pBoardVA[p+1].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, 0 };
-                pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
-                pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
+                removeSlime(x, y);
             }
             else
             {
@@ -1028,15 +1035,7 @@ void cGameState::removeAndCheck()
                     {
                         mSlimes.erase(std::find(mSlimes.begin(), mSlimes.end(), j));
                         --mSlimeCount;
-                        mBoard.set(i, j, 0);
-                        
-                        auto p = i * 4 + j * 4 * mSizeX;
-                        auto texcoords = ( i + j ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
-                    
-                        pBoardVA[p].texCoords   = texcoords;
-                        pBoardVA[p+1].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, 0 };
-                        pBoardVA[p+2].texCoords = texcoords + sf::Vector2f { gkCellPixSizeX, gkCellPixSizeY };
-                        pBoardVA[p+3].texCoords = texcoords + sf::Vector2f { 0, gkCellPixSizeY };
+                        removeSlime(i, j);
                     }
                     
                     mBoard.remove(i,j);
