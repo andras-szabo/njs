@@ -952,6 +952,7 @@ void cGameState::removeSlime(int x, int y)
     mBoard.clearNode(x, y);
     auto texcoords = ( x + y ) % 2 ? gkLightBkgTexCoords : gkDarkBkgTexCoords;
     setBgQuadTex(x, y, texcoords);
+    --mSlimeCount;
 }
 
 void cGameState::proceedWithExplosions(sf::Time dt)
@@ -1034,7 +1035,6 @@ void cGameState::removeAndCheck()
                     if ( mBoard.piece(i,j)->mType == EntType::jelly && mBoard.slime(i,j) )
                     {
                         mSlimes.erase(std::find(mSlimes.begin(), mSlimes.end(), j));
-                        --mSlimeCount;
                         removeSlime(i, j);
                     }
                     
